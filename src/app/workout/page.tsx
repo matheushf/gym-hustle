@@ -13,6 +13,7 @@ import {
   type WorkoutDay,
   type Exercise,
 } from "@/app/actions/workout";
+import { logout } from "@/app/actions/auth";
 import { toast } from "react-hot-toast";
 
 const DAYS_OF_WEEK = [
@@ -48,6 +49,7 @@ export default function WorkoutPage() {
     deletingId: null as string | null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     loadWorkoutDays();
@@ -161,6 +163,17 @@ export default function WorkoutPage() {
     setNewExercise({ name: "", sets: "", weight: "" });
   }
 
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    try {
+      await logout();
+      toast.success("Signed out successfully");
+    } catch {
+      toast.error("Failed to sign out");
+      setIsSigningOut(false);
+    }
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <header className="flex justify-between items-center mb-8">
@@ -169,7 +182,15 @@ export default function WorkoutPage() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">Matheus Victor</span>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+          >
+            {isSigningOut ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
             Sign out
           </Button>
         </div>
