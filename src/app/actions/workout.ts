@@ -8,15 +8,13 @@ export interface Exercise {
   id: string;
   name: string;
   sets: string;
-  weight?: string;
-  workout_day_id: string;
+  weight?: number;
   order: number;
 }
 
 export interface WorkoutDay {
   id: string;
   name: string;
-  user_id: string;
   exercises: Exercise[];
 }
 
