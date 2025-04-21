@@ -1,8 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useSearchParams } from "next/navigation";
 
 export default function ConfirmEmailPage() {
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email");
+  const loginUrl = email ? `/auth/login?email=${encodeURIComponent(email)}` : "/auth/login";
+
   return (
     <div className="container max-w-md mx-auto min-h-screen flex items-center justify-center p-4 sm:p-0">
       <div className="w-full py-8 text-center">
@@ -17,7 +22,7 @@ export default function ConfirmEmailPage() {
         </p>
         <Button
           variant="outline"
-          onClick={() => window.location.href = "/auth/login"}
+          onClick={() => window.location.href = loginUrl}
           className="w-full"
         >
           Return to Login

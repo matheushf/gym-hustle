@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { login } from "@/app/actions/auth";
-import { redirect } from "next/navigation";
+import { redirect, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,7 +42,14 @@ export default function LoginPage() {
         <p className="text-gray-400 mb-8">Login to your account</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Input name="email" type="email" placeholder="Email" required />
+            <Input 
+              name="email" 
+              type="email" 
+              placeholder="Email" 
+              required 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div>
             <Input

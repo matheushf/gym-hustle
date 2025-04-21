@@ -11,18 +11,19 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    const formData = new FormData(e.currentTarget);
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const formData = new FormData(e.currentTarget);
       await signup(formData);
     } catch (error) {
       console.log("Signup failed:", error);
       toast.error("Failed to create account. Please try again.");
     } finally {
       setIsLoading(false);
-      redirect("/auth/confirm-email");
+      const email = formData.get("email") as string;
+      redirect(`/auth/confirm-email?email=${encodeURIComponent(email)}`);
     }
   };
 
