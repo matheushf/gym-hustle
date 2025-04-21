@@ -10,6 +10,7 @@ export interface Exercise {
   sets: string;
   weight?: string;
   workout_day_id: string;
+  order: number;
 }
 
 export interface WorkoutDay {
@@ -35,11 +36,18 @@ export async function getWorkoutDays() {
         id,
         name,
         sets,
-        weight
+        weight,
+        order
       )
     `)
     .eq('user_id', session.user.id)
     .order('created_at');
+
+  if (workoutDays) {
+    workoutDays.forEach(day => {
+      day.exercises.sort((a, b) => a.order - b.order);
+    });
+  }
 
   return workoutDays || [];
 }
@@ -127,6 +135,20 @@ export async function deleteExercise(exerciseId: string) {
   const { error } = await supabase
     .from('exercises')
     .delete()
+    .eq('id', exerciseId);
+
+  if (error) throw error;
+  
+  revalidatePath('/workout');
+}
+
+export async function updateExerciseOrder(exerciseId: string, newOrder: number) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  const { error } = await supabase
+    .from('exercises')
+    .update({ order: newOrder })
     .eq('id', exerciseId);
 
   if (error) throw error;

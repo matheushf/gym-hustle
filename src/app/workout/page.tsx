@@ -2,11 +2,29 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Edit, Plus, CheckIcon, Trash2, X, DumbbellIcon, Loader2 } from "lucide-react";
+import { Edit, Plus, CheckIcon, Trash2, X, DumbbellIcon, Loader2, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   getWorkoutDays,
   updateExercise,
+  updateExerciseOrder,
   deleteExercise,
   createExercise,
   createWorkoutDay,
@@ -33,6 +51,77 @@ interface EditingExercise {
   weight: string;
 }
 
+interface SortableExerciseItemProps {
+  exercise: Exercise;
+  onEdit: (exercise: Exercise) => void;
+  onDelete: (id: string) => void;
+  isDeleting: boolean;
+}
+
+function SortableExerciseItem({ exercise, onEdit, onDelete, isDeleting }: SortableExerciseItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: exercise.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 text-sm bg-card"
+    >
+      <button
+        className="touch-none p-2 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="text-primary">
+        <DumbbellIcon className="h-4 w-4" />
+      </span>
+      <span className="mr-4">{exercise.name}</span>
+      <span className="mr-4 text-muted-foreground">
+        {exercise.sets}
+      </span>
+      <span className="mr-4 text-muted-foreground">
+        {exercise.weight ? `${exercise.weight}kg` : "-"}
+      </span>
+      <div className="flex-1 text-right gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => onEdit(exercise)}
+          disabled={isDeleting}
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive hover:text-destructive"
+          onClick={() => onDelete(exercise.id)}
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin text-destructive" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 export default function WorkoutPage() {
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>([]);
   const [editingExercise, setEditingExercise] =
@@ -50,6 +139,17 @@ export default function WorkoutPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     loadWorkoutDays();
@@ -174,6 +274,54 @@ export default function WorkoutPage() {
     }
   }
 
+  async function handleDragEnd(event: DragEndEvent, dayId: string) {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+
+    const dayWorkout = workoutDays.find(day => day.id === dayId);
+    if (!dayWorkout) return;
+
+    const oldIndex = dayWorkout.exercises.findIndex(ex => ex.id === active.id);
+    const newIndex = dayWorkout.exercises.findIndex(ex => ex.id === over.id);
+
+    // Immediately update the UI
+    setWorkoutDays(prev => prev.map(day => {
+      if (day.id === dayId) {
+        const newExercises = arrayMove(day.exercises, oldIndex, newIndex);
+        return {
+          ...day,
+          exercises: newExercises,
+        };
+      }
+      return day;
+    }));
+
+    try {
+      const newExercises = arrayMove(dayWorkout.exercises, oldIndex, newIndex);
+      
+      // Update orders in database in the background
+      await Promise.all(
+        newExercises.map((exercise, index) => 
+          updateExerciseOrder(exercise.id, index)
+        )
+      );
+    } catch (error) {
+      // Revert the optimistic update on error
+      setWorkoutDays(prev => prev.map(day => {
+        if (day.id === dayId) {
+          const revertedExercises = arrayMove(day.exercises, newIndex, oldIndex);
+          return {
+            ...day,
+            exercises: revertedExercises,
+          };
+        }
+        return day;
+      }));
+      toast.error("Failed to update exercise order");
+    }
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <header className="flex justify-between items-center mb-8">
@@ -216,109 +364,89 @@ export default function WorkoutPage() {
                 </div>
               ) : (
                 <>
-                  {hasExercises && (
-                    <ul className="space-y-3 mb-6">
-                      {exercises.map((exercise) => (
-                        <li
-                          key={exercise.id}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          {editingExercise?.id === exercise.id ? (
-                            <div className="flex items-center gap-3 w-full">
-                              <Input
-                                value={editingExercise.name}
-                                onChange={(e) =>
-                                  setEditingExercise((prev) => ({
-                                    ...prev!,
-                                    name: e.target.value,
-                                  }))
-                                }
-                                className="flex-1 bg-transparent border-muted"
+                  {hasExercises && dayWorkout && (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => handleDragEnd(event, dayWorkout.id)}
+                    >
+                      <SortableContext
+                        items={exercises.map(e => e.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <ul className="space-y-3 mb-6">
+                          {exercises.map((exercise) => (
+                            editingExercise?.id === exercise.id ? (
+                              <li key={exercise.id}>
+                                <div className="flex items-center gap-3 w-full">
+                                  <Input
+                                    value={editingExercise.name}
+                                    onChange={(e) =>
+                                      setEditingExercise((prev) => ({
+                                        ...prev!,
+                                        name: e.target.value,
+                                      }))
+                                    }
+                                    className="flex-1 bg-transparent border-muted"
+                                  />
+                                  <Input
+                                    value={editingExercise.sets}
+                                    onChange={(e) =>
+                                      setEditingExercise((prev) => ({
+                                        ...prev!,
+                                        sets: e.target.value,
+                                      }))
+                                    }
+                                    className="w-24 bg-transparent border-muted"
+                                  />
+                                  <Input
+                                    type="number"
+                                    value={editingExercise.weight}
+                                    onChange={(e) =>
+                                      setEditingExercise((prev) => ({
+                                        ...prev!,
+                                        weight: e.target.value,
+                                      }))
+                                    }
+                                    className="w-24 bg-transparent border-muted"
+                                  />
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={handleUpdateExercise}
+                                      disabled={loadingStates.editingId === exercise.id}
+                                    >
+                                      {loadingStates.editingId === exercise.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <CheckIcon className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setEditingExercise(null)}
+                                      disabled={loadingStates.editingId === exercise.id}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </li>
+                            ) : (
+                              <SortableExerciseItem
+                                key={exercise.id}
+                                exercise={exercise}
+                                onEdit={startEditing}
+                                onDelete={handleDeleteExercise}
+                                isDeleting={loadingStates.deletingId === exercise.id}
                               />
-                              <Input
-                                value={editingExercise.sets}
-                                onChange={(e) =>
-                                  setEditingExercise((prev) => ({
-                                    ...prev!,
-                                    sets: e.target.value,
-                                  }))
-                                }
-                                className="w-24 bg-transparent border-muted"
-                              />
-                              <Input
-                                type="number"
-                                value={editingExercise.weight}
-                                onChange={(e) =>
-                                  setEditingExercise((prev) => ({
-                                    ...prev!,
-                                    weight: e.target.value,
-                                  }))
-                                }
-                                className="w-24 bg-transparent border-muted"
-                              />
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={handleUpdateExercise}
-                                  disabled={loadingStates.editingId === exercise.id}
-                                >
-                                  {loadingStates.editingId === exercise.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <CheckIcon className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingExercise(null)}
-                                  disabled={loadingStates.editingId === exercise.id}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="text-primary">
-                                <DumbbellIcon className="h-4 w-4" />
-                              </span>
-                              <span className="mr-4">{exercise.name}</span>
-                              <span className="mr-4 text-muted-foreground mr-2">
-                                {exercise.sets}
-                              </span>
-                              <span className="mr-4 text-muted-foreground mr-2">
-                                {exercise.weight ? `${exercise.weight}kg` : "-"}
-                              </span>
-                              <div className="flex-1 text-right gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => startEditing(exercise)}
-                                  disabled={loadingStates.deletingId === exercise.id}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteExercise(exercise.id)}
-                                  disabled={loadingStates.deletingId === exercise.id}
-                                >
-                                  {loadingStates.deletingId === exercise.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin text-destructive" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                            )
+                          ))}
+                        </ul>
+                      </SortableContext>
+                    </DndContext>
                   )}
 
                   {!hasExercises && !isAddingExercise && (

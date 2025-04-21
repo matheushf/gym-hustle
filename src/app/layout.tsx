@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Gym Hustle",
-  description: "Your gym hustle, right here",
+  description: "Track your workouts and progress",
   manifest: "/manifest.json",
   themeColor: "#000000",
   appleWebApp: {
@@ -23,7 +23,18 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Gym Hustle",
   },
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  icons: {
+    apple: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
