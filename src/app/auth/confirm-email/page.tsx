@@ -10,10 +10,10 @@ export default function ConfirmEmailPage() {
           Check Your Email
         </h1>
         <p className="text-gray-400 mb-8">
-          We've sent you a confirmation email. Please check your inbox and click the link to verify your account.
+          {"We've sent you a confirmation email. Please check your inbox and click the link to verify your account."}
         </p>
         <p className="text-sm text-gray-400 mb-4">
-          Didn't receive the email? Check your spam folder.
+          {"Didn't receive the email? Check your spam folder."}
         </p>
         <Button
           variant="outline"
