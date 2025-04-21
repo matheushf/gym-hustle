@@ -68,4 +68,17 @@ export async function logout() {
 
   revalidatePath("/");
   redirect("/auth/login");
+}
+
+export async function getCurrentUser() {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    return null;
+  }
+
+  return session.user;
 } 

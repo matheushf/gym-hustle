@@ -1,5 +1,6 @@
 import { getWorkoutDays } from "@/app/actions/workout";
 import { WorkoutPageClient } from "./WorkoutPageClient";
+import { getCurrentUser } from "../actions/auth";
 
 const DAYS_OF_WEEK = [
   "Monday",
@@ -12,12 +13,16 @@ const DAYS_OF_WEEK = [
 ];
 
 export default async function WorkoutPage() {
-  const workoutDays = await getWorkoutDays();
+  const [workoutDays, user] = await Promise.all([
+    getWorkoutDays(),
+    getCurrentUser()
+  ]);
 
   return (
-    <WorkoutPageClient 
+    <WorkoutPageClient
       initialWorkoutDays={workoutDays}
       daysOfWeek={DAYS_OF_WEEK}
+      userName={user?.email ?? "User"}
     />
   );
 }
