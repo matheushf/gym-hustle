@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Plus, X, CheckIcon } from "lucide-react";
 import { ExerciseItem } from "./ExerciseItem";
 import type { Exercise, WorkoutDay } from "@/app/actions/workout";
+import { useEffect, useRef } from 'react';
 
 interface DaySectionProps {
   dayName: string;
@@ -75,6 +76,21 @@ export function DaySection({
     })
   );
 
+  const weightInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingExercise) {
+      weightInputRef.current?.focus();
+    }
+  }, [editingExercise]);
+
+  useEffect(() => {
+    if (isAddingExercise) {
+      nameInputRef.current?.focus();
+    }
+  }, [isAddingExercise]);
+
   const exercises = dayWorkout?.exercises || [];
   const hasExercises = exercises.length > 0;
 
@@ -103,44 +119,47 @@ export function DaySection({
                   {exercises.map((exercise) => (
                     editingExercise?.id === exercise.id ? (
                       <li key={exercise.id}>
-                        <div className="flex items-center gap-3 w-full">
+                        <div className="flex flex-col gap-3">
                           <Input
                             value={editingExercise.name}
                             onChange={(e) => onEditingExerciseChange('name', e.target.value)}
-                            className="flex-1 bg-transparent border-muted"
+                            className="w-full bg-transparent border-muted"
                           />
-                          <Input
-                            value={editingExercise.sets}
-                            onChange={(e) => onEditingExerciseChange('sets', e.target.value)}
-                            className="w-24 bg-transparent border-muted"
-                          />
-                          <Input
-                            type="number"
-                            value={editingExercise.weight}
-                            onChange={(e) => onEditingExerciseChange('weight', e.target.value)}
-                            className="w-24 bg-transparent border-muted"
-                          />
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={onUpdateExercise}
-                              disabled={loadingStates.editingId === exercise.id}
-                            >
-                              {loadingStates.editingId === exercise.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckIcon className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={onCancelEdit}
-                              disabled={loadingStates.editingId === exercise.id}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              value={editingExercise.sets}
+                              onChange={(e) => onEditingExerciseChange('sets', e.target.value)}
+                              className="flex-1 bg-transparent border-muted"
+                            />
+                            <Input
+                              ref={weightInputRef}
+                              type="number"
+                              value={editingExercise.weight}
+                              onChange={(e) => onEditingExerciseChange('weight', e.target.value)}
+                              className="flex-1 bg-transparent border-muted"
+                            />
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={onUpdateExercise}
+                                disabled={loadingStates.editingId === exercise.id}
+                              >
+                                {loadingStates.editingId === exercise.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckIcon className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={onCancelEdit}
+                                disabled={loadingStates.editingId === exercise.id}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </li>
@@ -169,44 +188,47 @@ export function DaySection({
           )}
 
           {isAddingExercise === dayWorkout?.id ? (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3">
               <Input
+                ref={nameInputRef}
                 placeholder="Biceps curl"
                 value={newExercise.name}
                 onChange={(e) => onNewExerciseChange('name', e.target.value)}
-                className="flex-1 bg-transparent border-muted"
+                className="w-full bg-transparent border-muted"
               />
-              <Input
-                placeholder="3×10"
-                value={newExercise.sets}
-                onChange={(e) => onNewExerciseChange('sets', e.target.value)}
-                className="w-24 bg-transparent border-muted"
-              />
-              <Input
-                placeholder="15kg"
-                type="number"
-                value={newExercise.weight}
-                onChange={(e) => onNewExerciseChange('weight', e.target.value)}
-                className="w-24 bg-transparent border-muted"
-              />
-              <div className="flex gap-1">
-                <Button
-                  onClick={() => onAddExercise(dayWorkout.id)}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={loadingStates.adding}
-                >
-                  {loadingStates.adding ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  Add
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={onCancelAdd}
-                  disabled={loadingStates.adding}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center gap-3">
+                <Input
+                  placeholder="3×10"
+                  value={newExercise.sets}
+                  onChange={(e) => onNewExerciseChange('sets', e.target.value)}
+                  className="flex-1 bg-transparent border-muted"
+                />
+                <Input
+                  placeholder="15kg"
+                  type="number"
+                  value={newExercise.weight}
+                  onChange={(e) => onNewExerciseChange('weight', e.target.value)}
+                  className="flex-1 bg-transparent border-muted"
+                />
+                <div className="flex gap-1">
+                  <Button
+                    onClick={() => onAddExercise(dayWorkout.id)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={loadingStates.adding}
+                  >
+                    {loadingStates.adding ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Add
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={onCancelAdd}
+                    disabled={loadingStates.adding}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
