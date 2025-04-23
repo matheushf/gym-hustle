@@ -36,8 +36,8 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // If there's no session and the user is trying to access protected routes
-  if (!session && (request.nextUrl.pathname === '/')) {
+  // If there's no session and the user is trying to access any non-auth route
+  if (!session && !request.nextUrl.pathname.startsWith('/auth/')) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/auth/login'
     return NextResponse.redirect(redirectUrl)
