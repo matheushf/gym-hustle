@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster";
+import type { Viewport } from 'next'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,12 +25,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Gym Hustle",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   icons: {
     apple: [
       { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
@@ -37,6 +32,13 @@ export const metadata: Metadata = {
     ],
   },
 };
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export default function RootLayout({
   children,
