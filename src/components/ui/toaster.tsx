@@ -11,8 +11,8 @@ export function Toaster() {
       toastOptions={{
         duration: 5000,
         style: {
-          background: "hsl(var(--background))",
-          color: "hsl(var(--foreground))",
+          background: "#fff", // white background
+          color: "#000",      // black text
           border: "1px solid hsl(var(--border))",
         },
       }}

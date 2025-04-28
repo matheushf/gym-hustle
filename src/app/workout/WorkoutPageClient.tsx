@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import {
   updateExercise,
@@ -51,6 +51,19 @@ export function WorkoutPageClient({ initialWorkoutDays, daysOfWeek, userName }: 
     deletingId: null as string | null,
   });
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Create refs for each day
+  const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!daysOfWeek || daysOfWeek.length === 0) return;
+    const today = new Date();
+    const currentDayName = daysOfWeek[today.getDay() === 0 ? 6 : today.getDay() - 1];
+    const ref = dayRefs.current[currentDayName];
+    if (ref) {
+      ref.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []); // Only on mount
 
   async function handleUpdateExercise() {
     if (!editingExercise) return;
@@ -253,26 +266,30 @@ export function WorkoutPageClient({ initialWorkoutDays, daysOfWeek, userName }: 
 
       <main className="space-y-4">
         {daysOfWeek.map((dayName) => (
-          <DaySection
+          <div
             key={dayName}
-            dayName={dayName}
-            dayWorkout={getDayWorkout(dayName)}
-            isLoading={false}
-            isAddingExercise={isAddingExercise}
-            editingExercise={editingExercise}
-            newExercise={newExercise}
-            loadingStates={loadingStates}
-            onDragEnd={handleDragEnd}
-            onAddExerciseClick={handleAddExerciseClick}
-            onAddExercise={handleAddExercise}
-            onCancelAdd={handleCancelAdd}
-            onUpdateExercise={handleUpdateExercise}
-            onEditingExerciseChange={handleEditingExerciseChange}
-            onNewExerciseChange={handleNewExerciseChange}
-            onEditExercise={handleEditExercise}
-            onDeleteExercise={handleDeleteExercise}
-            onCancelEdit={() => setEditingExercise(null)}
-          />
+            ref={el => { dayRefs.current[dayName] = el; }}
+          >
+            <DaySection
+              dayName={dayName}
+              dayWorkout={getDayWorkout(dayName)}
+              isLoading={false}
+              isAddingExercise={isAddingExercise}
+              editingExercise={editingExercise}
+              newExercise={newExercise}
+              loadingStates={loadingStates}
+              onDragEnd={handleDragEnd}
+              onAddExerciseClick={handleAddExerciseClick}
+              onAddExercise={handleAddExercise}
+              onCancelAdd={handleCancelAdd}
+              onUpdateExercise={handleUpdateExercise}
+              onEditingExerciseChange={handleEditingExerciseChange}
+              onNewExerciseChange={handleNewExerciseChange}
+              onEditExercise={handleEditExercise}
+              onDeleteExercise={handleDeleteExercise}
+              onCancelEdit={() => setEditingExercise(null)}
+            />
+          </div>
         ))}
       </main>
     </div>
