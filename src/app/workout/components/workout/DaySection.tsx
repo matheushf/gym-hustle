@@ -78,10 +78,14 @@ export function DaySection({
 
   const weightInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const previousExerciseIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (editingExercise) {
+    if (editingExercise && editingExercise.id !== previousExerciseIdRef.current) {
       weightInputRef.current?.focus();
+      previousExerciseIdRef.current = editingExercise.id;
+    } else if (!editingExercise) {
+      previousExerciseIdRef.current = null;
     }
   }, [editingExercise]);
 
