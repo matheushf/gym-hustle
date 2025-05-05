@@ -19,7 +19,6 @@ import { arrayMove } from '@dnd-kit/sortable';
 
 interface WorkoutPageClientProps {
   initialWorkoutDays: WorkoutDay[];
-  daysOfWeek: string[];
   userName: string;
 }
 
@@ -36,7 +35,17 @@ interface NewExercise {
   weight: string;
 }
 
-export function WorkoutPageClient({ initialWorkoutDays, daysOfWeek, userName }: WorkoutPageClientProps) {
+const DAYS_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageClientProps) {
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>(initialWorkoutDays);
   const [editingExercise, setEditingExercise] = useState<EditingExercise | null>(null);
   const [isAddingExercise, setIsAddingExercise] = useState<string | null>(null);
@@ -56,9 +65,8 @@ export function WorkoutPageClient({ initialWorkoutDays, daysOfWeek, userName }: 
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    if (!daysOfWeek || daysOfWeek.length === 0) return;
     const today = new Date();
-    const currentDayName = daysOfWeek[today.getDay() === 0 ? 6 : today.getDay() - 1];
+    const currentDayName = DAYS_OF_WEEK[today.getDay() === 0 ? 6 : today.getDay() - 1];
     const ref = dayRefs.current[currentDayName];
     if (ref) {
       ref.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -265,7 +273,7 @@ export function WorkoutPageClient({ initialWorkoutDays, daysOfWeek, userName }: 
       />
 
       <main className="space-y-4">
-        {daysOfWeek.map((dayName) => (
+        {DAYS_OF_WEEK.map((dayName) => (
           <div
             key={dayName}
             ref={el => { dayRefs.current[dayName] = el; }}
