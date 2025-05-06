@@ -30,9 +30,7 @@ export default async function Page() {
         </div>
       }
     >
-      <div className="flex flex-col justify-center items-center h-screen">
-        <h1 className="text-2xl font-bold text-primary mb-4">Gym Hustle</h1>
-      </div>
+      <Workout />
     </Suspense>
   );
 }
