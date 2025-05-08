@@ -199,6 +199,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  console.log("oi-- layout")
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
