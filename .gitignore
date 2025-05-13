@@ -40,4 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-public/service-worker.gen
+public/service-worker.gen.js
