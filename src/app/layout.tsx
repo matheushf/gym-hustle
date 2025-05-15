@@ -181,8 +181,10 @@ export const metadata: Metadata = {
   },
   icons: {
     apple: [
-      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/ios/12.png", sizes: "120x120", type: "image/png" },
+      { url: "/icons/ios/18.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/ios/192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/ios/512.png", sizes: "512x512", type: "image/png" },
     ],
   },
 };
