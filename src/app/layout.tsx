@@ -181,8 +181,8 @@ export const metadata: Metadata = {
   },
   icons: {
     apple: [
-      { url: "/icons/ios/12.png", sizes: "120x120", type: "image/png" },
-      { url: "/icons/ios/18.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/ios/120.png", sizes: "120x120", type: "image/png" },
+      { url: "/icons/ios/180.png", sizes: "180x180", type: "image/png" },
       { url: "/icons/ios/192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/ios/512.png", sizes: "512x512", type: "image/png" },
     ],
@@ -203,7 +203,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        <link rel="apple-touch-icon" sizes="120x120" href="/icons/ios/120.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/ios/180.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icons/ios/192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/icons/ios/512.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
