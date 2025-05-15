@@ -38,6 +38,6 @@ export const config = {
      * - public folder
      * - auth routes
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|manifest.*|icon.*).*)',
   ],
 } 
