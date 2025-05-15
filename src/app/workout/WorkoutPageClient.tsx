@@ -131,6 +131,7 @@ export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageC
   }
 
   async function handleAddExercise(dayId: string) {
+    setLoadingStates(prev => ({ ...prev, adding: true }));
     try {
       if (!newExercise.name || !newExercise.sets) {
         toast.error("Please fill in exercise name and sets");
@@ -160,6 +161,8 @@ export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageC
       toast.success("Exercise added successfully");
     } catch {
       toast.error("Failed to add exercise");
+    } finally {
+      setLoadingStates(prev => ({ ...prev, adding: false }));
     }
   }
 

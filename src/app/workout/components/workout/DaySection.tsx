@@ -222,8 +222,7 @@ export function DaySection({
                   >
                     {loadingStates.adding ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    Add
+                    ) : "Add"}
                   </Button>
                   <Button
                     variant="ghost"
