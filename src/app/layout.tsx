@@ -48,6 +48,8 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning lang="en" translate="no" className="notranslate">
       <head>
+        <meta name="googlebot" content="notranslate" />
+        <meta name="google" content="notranslate" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/ios/192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/ios/512.png" />
       </head>
