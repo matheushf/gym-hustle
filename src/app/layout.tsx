@@ -46,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html suppressHydrationWarning lang="en" translate="no" className="notranslate">
       <head>
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/ios/192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/ios/512.png" />
