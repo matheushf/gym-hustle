@@ -68,7 +68,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <Header />
-          <MobileMenu userName={user?.email ?? "User"} />
+          {user && <MobileMenu userName={user.email ?? "User"} />}
           {children}
           <Toaster />
         </ThemeProvider>
