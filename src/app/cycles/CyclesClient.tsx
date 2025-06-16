@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { addCycle, updateCycle } from "@/app/actions/cycles";
 
@@ -21,8 +21,24 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
     start: Date;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showAllBulking, setShowAllBulking] = useState(false);
+  const [showAllCutting, setShowAllCutting] = useState(false);
 
   console.log(initialCycles);
+
+  // Detect active cycle on mount and when cycles change
+  useEffect(() => {
+    const currentActive = cycles.find((cycle) => !cycle.end_date);
+    if (currentActive) {
+      setActiveCycle({
+        id: currentActive.id,
+        type: currentActive.type,
+        start: new Date(currentActive.start_date),
+      });
+    } else {
+      setActiveCycle(null);
+    }
+  }, [cycles]);
 
   const handleStart = async (type: "bulking" | "cutting") => {
     setSaving(true);
@@ -114,35 +130,47 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
               No bulking seasons started yet.
             </p>
           ) : (
-            <ul className="list-disc pl-5">
-              {bulkingSeasons.map((season) => (
-                <li key={season.id} className="mb-2">
-                  <div>
-                    <div className="flex flex-row gap-1">
-                      <span className="font-medium">Start:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {new Date(season.start_date).toLocaleDateString()}
-                      </span>
-                      {season.end_date && (
-                        <>
-                          <span className="font-medium">End:</span>{" "}
-                          <span className="text-muted-foreground">
-                            {new Date(season.end_date).toLocaleDateString()}
-                          </span>
-                        </>
-                      )}
+            <>
+              <ul className="list-disc pl-5">
+                {(showAllBulking ? bulkingSeasons : bulkingSeasons.slice(0, 1)).map((season) => (
+                  <li key={season.id} className="mb-2">
+                    <div>
+                      <div className="flex flex-row gap-1">
+                        <span className="font-medium">Start:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {new Date(season.start_date).toLocaleDateString()}
+                        </span>
+                        {season.end_date && (
+                          <>
+                            <span className="font-medium">End:</span>{" "}
+                            <span className="text-muted-foreground">
+                              {new Date(season.end_date).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <span className="font-medium">Duration:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {getDurationDays(season.start_date, season.end_date)}{" "}
+                          days
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <span className="font-medium">Duration:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {getDurationDays(season.start_date, season.end_date)}{" "}
-                        days
-                      </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+              {bulkingSeasons.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setShowAllBulking((prev) => !prev)}
+                >
+                  {showAllBulking ? "Show less" : `Show more (${bulkingSeasons.length - 1} more)`}
+                </Button>
+              )}
+            </>
           )}
         </section>
 
@@ -178,31 +206,47 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
               No cutting seasons started yet.
             </p>
           ) : (
-            <ul className="list-disc pl-5">
-              {cuttingSeasons.map((season) => (
-                <li key={season.id} className="mb-2">
-                  <div>
-                    <div className="flex flex-row gap-1">
-                      <span className="font-medium">Start:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {new Date(season.start_date).toLocaleDateString()}
-                      </span>
-                      <span className="font-medium">End:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {new Date(season.end_date).toLocaleDateString()}
-                      </span>
+            <>
+              <ul className="list-disc pl-5">
+                {(showAllCutting ? cuttingSeasons : cuttingSeasons.slice(0, 1)).map((season) => (
+                  <li key={season.id} className="mb-2">
+                    <div>
+                      <div className="flex flex-row gap-1">
+                        <span className="font-medium">Start:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {new Date(season.start_date).toLocaleDateString()}
+                        </span>
+                        {season.end_date && (
+                          <>
+                            <span className="font-medium">End:</span>{" "}
+                            <span className="text-muted-foreground">
+                              {new Date(season.end_date).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <span className="font-medium">Duration:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {getDurationDays(season.start_date, season.end_date)}{" "}
+                          days
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <span className="font-medium">Duration:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {getDurationDays(season.start_date, season.end_date)}{" "}
-                        days
-                      </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+              {cuttingSeasons.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setShowAllCutting((prev) => !prev)}
+                >
+                  {showAllCutting ? "Show less" : `Show more (${cuttingSeasons.length - 1} more)`}
+                </Button>
+              )}
+            </>
           )}
         </section>
       </div>
