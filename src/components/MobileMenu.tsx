@@ -104,6 +104,13 @@ export function MobileMenu({ userName }: { userName: string }) {
             >
               Cycles
             </Link>
+            <Link
+              href="/calories"
+              className={linkClass("/calories")}
+              onClick={() => setMenuOpen(false)}
+            >
+              Calories
+            </Link>
             <Button
               variant="outline"
               size="sm"
@@ -138,6 +145,9 @@ export function MobileMenu({ userName }: { userName: string }) {
         </Link>
         <Link href="/cycles" className={linkClass("/cycles")}>
           Cycles
+        </Link>
+        <Link href="/calories" className={linkClass("/calories")}>
+          Calories
         </Link>
         <Button
           variant="outline"
