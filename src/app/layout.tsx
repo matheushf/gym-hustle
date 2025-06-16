@@ -4,6 +4,9 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster";
 import type { Viewport } from 'next'
+import { MobileMenu } from "@/components/MobileMenu";
+import { getCurrentUser } from "@/app/actions/auth";
+import { Header } from "@/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,11 +43,13 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const user = await getCurrentUser();
+
   return (
     <html suppressHydrationWarning lang="en" translate="no" className="notranslate">
       <head>
@@ -62,8 +67,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Header />
+          <MobileMenu userName={user?.email ?? "User"} />
           {children}
-
           <Toaster />
         </ThemeProvider>
       </body>

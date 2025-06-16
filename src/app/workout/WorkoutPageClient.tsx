@@ -11,15 +11,12 @@ import {
   type WorkoutDay,
   type Exercise,
 } from "@/app/actions/workout";
-import { logout } from "@/app/actions/auth";
-import { Header } from "@/app/workout/components/workout/Header";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 
 interface WorkoutPageClientProps {
   initialWorkoutDays: WorkoutDay[];
-  userName: string;
 }
 
 interface EditingExercise {
@@ -45,7 +42,7 @@ const DAYS_OF_WEEK = [
   "Sunday",
 ];
 
-export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageClientProps) {
+export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps) {
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>(initialWorkoutDays);
   const [editingExercise, setEditingExercise] = useState<EditingExercise | null>(null);
   const [isAddingExercise, setIsAddingExercise] = useState<string | null>(null);
@@ -59,7 +56,6 @@ export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageC
     editingId: null as string | null,
     deletingId: null as string | null,
   });
-  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Create refs for each day
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -203,17 +199,6 @@ export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageC
     setNewExercise({ name: "", sets: "", weight: "" });
   }
 
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    try {
-      await logout();
-      toast.success("Signed out successfully");
-    } catch {
-      toast.error("Failed to sign out");
-      setIsSigningOut(false);
-    }
-  }
-
   async function handleDragEnd(event: DragEndEvent, dayId: string) {
     const { active, over } = event;
     
@@ -269,12 +254,6 @@ export function WorkoutPageClient({ initialWorkoutDays, userName }: WorkoutPageC
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
-      <Header
-        onSignOut={handleSignOut}
-        isSigningOut={isSigningOut}
-        userName={userName}
-      />
-
       <main className="space-y-4">
         {DAYS_OF_WEEK.map((dayName) => (
           <div
