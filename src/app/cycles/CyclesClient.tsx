@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { addCycle, updateCycle } from "@/app/actions/cycles";
+import { DatePicker } from "@/components/ui/date-picker";
 
 type Cycle = {
   id: string;
@@ -21,6 +22,12 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
     start: Date;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [bulkingStartDate, setBulkingStartDate] = useState<Date | undefined>(
+    new Date()
+  );
+  const [cuttingStartDate, setCuttingStartDate] = useState<Date | undefined>(
+    new Date()
+  );
   const [showAllBulking, setShowAllBulking] = useState(false);
   const [showAllCutting, setShowAllCutting] = useState(false);
 
@@ -40,12 +47,12 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
     }
   }, [cycles]);
 
-  const handleStart = async (type: "bulking" | "cutting") => {
+  const handleStart = async (type: "bulking" | "cutting", startDate: Date) => {
     setSaving(true);
     try {
       const newCycle = await addCycle({
         type,
-        start: new Date(),
+        start: startDate,
       });
       setCycles((prev) => [newCycle, ...prev]);
       setActiveCycle({
@@ -104,19 +111,28 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
           {activeCycle && activeCycle.type === "bulking" ? (
             <div className="mb-4 flex flex-col gap-2">
               <span className="text-sm text-muted-foreground">
-                Started: {activeCycle.start.toLocaleDateString()}
+                Started:{" "}
+                {activeCycle.start.toLocaleDateString("en-GB", {
+                  timeZone: "UTC",
+                })}
               </span>
               <Button variant="default" onClick={handleStop} disabled={saving}>
                 {saving ? "Saving..." : "Stop Bulking"}
               </Button>
             </div>
           ) : (
-            <div className="mb-4 flex flex-col gap-2">
+            <div className="mb-4 flex flex-row items-center justify-between gap-2">
+              <DatePicker
+                date={bulkingStartDate}
+                setDate={setBulkingStartDate}
+              />
               <Button
                 variant="secondary"
-                className="mb-4"
-                onClick={() => handleStart("bulking")}
-                disabled={!!activeCycle || saving}
+                className="w-full"
+                onClick={() =>
+                  handleStart("bulking", bulkingStartDate || new Date())
+                }
+                disabled={!!activeCycle || saving || !bulkingStartDate}
               >
                 Start Bulking
               </Button>
@@ -132,30 +148,48 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
           ) : (
             <>
               <ul className="list-disc pl-5">
-                {(showAllBulking ? bulkingSeasons : bulkingSeasons.slice(0, 1)).map((season) => (
+                {(showAllBulking
+                  ? bulkingSeasons
+                  : bulkingSeasons.slice(0, 1)
+                ).map((season) => (
                   <li key={season.id} className="mb-2">
                     <div>
                       <div className="flex flex-row gap-1">
                         <span className="font-medium">Start:</span>{" "}
                         <span className="text-muted-foreground">
-                          {new Date(season.start_date).toLocaleDateString()}
+                          {new Date(season.start_date).toLocaleDateString(
+                            "en-GB",
+                            {
+                              timeZone: "UTC",
+                            }
+                          )}
                         </span>
                         {season.end_date && (
                           <>
                             <span className="font-medium">End:</span>{" "}
                             <span className="text-muted-foreground">
-                              {new Date(season.end_date).toLocaleDateString()}
+                              {new Date(season.end_date).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  timeZone: "UTC",
+                                }
+                              )}
                             </span>
                           </>
                         )}
                       </div>
-                      <div className="text-left">
-                        <span className="font-medium">Duration:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {getDurationDays(season.start_date, season.end_date)}{" "}
-                          days
-                        </span>
-                      </div>
+                      {season.end_date && (
+                        <div className="text-left">
+                          <span className="font-medium">Duration:</span>{" "}
+                          <span className="text-muted-foreground">
+                            {getDurationDays(
+                              season.start_date,
+                              season.end_date
+                            )}{" "}
+                            days
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -167,7 +201,9 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
                   className="mt-2"
                   onClick={() => setShowAllBulking((prev) => !prev)}
                 >
-                  {showAllBulking ? "Show less" : `Show more (${bulkingSeasons.length - 1} more)`}
+                  {showAllBulking
+                    ? "Show less"
+                    : `Show more (${bulkingSeasons.length - 1} more)`}
                 </Button>
               )}
             </>
@@ -180,19 +216,28 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
           {activeCycle && activeCycle.type === "cutting" ? (
             <div className="mb-4 flex flex-col gap-2">
               <span className="text-sm text-muted-foreground">
-                Started: {activeCycle.start.toLocaleDateString()}
+                Started:{" "}
+                {activeCycle.start.toLocaleDateString("en-GB", {
+                  timeZone: "UTC",
+                })}
               </span>
               <Button variant="default" onClick={handleStop} disabled={saving}>
                 {saving ? "Saving..." : "Stop Cutting"}
               </Button>
             </div>
           ) : (
-            <div className="mb-4 flex flex-col gap-2">
+            <div className="mb-4 flex flex-row items-center gap-2">
+              <DatePicker
+                date={cuttingStartDate}
+                setDate={setCuttingStartDate}
+              />
               <Button
                 variant="secondary"
-                className="mb-4"
-                onClick={() => handleStart("cutting")}
-                disabled={!!activeCycle || saving}
+                className="w-full"
+                onClick={() =>
+                  handleStart("cutting", cuttingStartDate || new Date())
+                }
+                disabled={!!activeCycle || saving || !cuttingStartDate}
               >
                 Start Cutting
               </Button>
@@ -208,30 +253,48 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
           ) : (
             <>
               <ul className="list-disc pl-5">
-                {(showAllCutting ? cuttingSeasons : cuttingSeasons.slice(0, 1)).map((season) => (
+                {(showAllCutting
+                  ? cuttingSeasons
+                  : cuttingSeasons.slice(0, 1)
+                ).map((season) => (
                   <li key={season.id} className="mb-2">
                     <div>
                       <div className="flex flex-row gap-1">
                         <span className="font-medium">Start:</span>{" "}
                         <span className="text-muted-foreground">
-                          {new Date(season.start_date).toLocaleDateString()}
+                          {new Date(season.start_date).toLocaleDateString(
+                            "en-GB",
+                            {
+                              timeZone: "UTC",
+                            }
+                          )}
                         </span>
                         {season.end_date && (
                           <>
                             <span className="font-medium">End:</span>{" "}
                             <span className="text-muted-foreground">
-                              {new Date(season.end_date).toLocaleDateString()}
+                              {new Date(season.end_date).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  timeZone: "UTC",
+                                }
+                              )}
                             </span>
                           </>
                         )}
                       </div>
-                      <div className="text-left">
-                        <span className="font-medium">Duration:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {getDurationDays(season.start_date, season.end_date)}{" "}
-                          days
-                        </span>
-                      </div>
+                      {season.end_date && (
+                        <div className="text-left">
+                          <span className="font-medium">Duration:</span>{" "}
+                          <span className="text-muted-foreground">
+                            {getDurationDays(
+                              season.start_date,
+                              season.end_date
+                            )}{" "}
+                            days
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -243,7 +306,9 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
                   className="mt-2"
                   onClick={() => setShowAllCutting((prev) => !prev)}
                 >
-                  {showAllCutting ? "Show less" : `Show more (${cuttingSeasons.length - 1} more)`}
+                  {showAllCutting
+                    ? "Show less"
+                    : `Show more (${cuttingSeasons.length - 1} more)`}
                 </Button>
               )}
             </>
