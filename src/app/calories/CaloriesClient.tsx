@@ -4,13 +4,7 @@ import React, { useState } from "react";
 import { Edit, CheckIcon, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-interface Meal {
-  id: string;
-  name: "morning" | "lunch" | "afternoon" | "dinner";
-  calories: number;
-  description?: string;
-}
+import { MacroGoal } from "@/app/actions/calories";
 
 interface FoodItem {
   name: string;
@@ -19,16 +13,23 @@ interface FoodItem {
 }
 
 interface CaloriesClientProps {
-  initialCalories: Meal[];
+  initialMacros: MacroGoal[];
 }
 
-export function CaloriesClient({ initialCalories }: CaloriesClientProps) {
+export function CaloriesClient({ initialMacros }: CaloriesClientProps) {
   const meals = ["morning", "lunch", "afternoon", "dinner"] as const;
 
   // State for macros per meal
   const [macros, setMacros] = useState(
     Object.fromEntries(
-      meals.map((meal) => [meal, { carbos: 0, fat: 0, protein: 0 }])
+      meals.map((meal) => {
+        const found = initialMacros.find((m) => m.meal === meal);
+        return [meal, {
+          carbos: found?.carbos ?? 0,
+          fat: found?.fat ?? 0,
+          protein: found?.protein ?? 0,
+        }];
+      })
     )
   );
   // Track which meal is in edit mode
@@ -64,12 +65,30 @@ export function CaloriesClient({ initialCalories }: CaloriesClientProps) {
     >
   );
 
+  // Add loading and error state for saving macros
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleEditClick = (meal: (typeof meals)[number]) => {
     setEditingMeal(meal);
   };
 
-  const handleSaveClick = () => {
-    setEditingMeal(null);
+  const handleSaveClick = async () => {
+    if (editingMeal) {
+      setSaving(true);
+      setSaveError(null);
+      const macro = macros[editingMeal];
+      try {
+        // Dynamically import the server action
+        const { upsertMacroGoal } = await import("@/app/actions/calories");
+        await upsertMacroGoal(editingMeal, macro.carbos, macro.fat, macro.protein);
+        setEditingMeal(null);
+      } catch (err: unknown) {
+        setSaveError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setSaving(false);
+      }
+    }
   };
 
   const handleMacroChange = (

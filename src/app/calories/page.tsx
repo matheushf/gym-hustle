@@ -1,13 +1,15 @@
 // import { getCycles } from "@/app/actions/cycles";
 import { CaloriesClient } from "./CaloriesClient";
+import { getMacroGoals } from "@/app/actions/calories";
 
 import { Suspense } from "react";
 import FullLoader from "@/components/ui/full-loader";
 
 async function Cycles() {
+  const initialMacros = await getMacroGoals();
   return (
     <Suspense fallback={<FullLoader />}>
-      <CaloriesClient initialCalories={[]} />
+      <CaloriesClient initialMacros={initialMacros} />
     </Suspense>
   );
 }
