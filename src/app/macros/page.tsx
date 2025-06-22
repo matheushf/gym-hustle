@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
-import { CaloriesClient } from "./CaloriesClient";
-import { getMacroGoals } from "@/app/actions/calories";
+import { MacrosClient } from "./MacrosClient";
+import { getMacroGoals } from "@/app/actions/macros";
 import { cookies } from "next/headers";
 
 export default async function Page() {
@@ -14,5 +14,5 @@ export default async function Page() {
     }
   )();
 
-  return <CaloriesClient initialMacros={initialMacros} />;
+  return <MacrosClient initialMacros={initialMacros} />;
 }

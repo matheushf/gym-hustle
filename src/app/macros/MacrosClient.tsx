@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Edit, CheckIcon, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MacroGoal } from "@/app/actions/calories";
+import { MacroGoal } from "@/app/actions/macros";
 
 interface FoodItem {
   name: string;
@@ -12,11 +12,11 @@ interface FoodItem {
   grams: string;
 }
 
-interface CaloriesClientProps {
+interface MacrosClientProps {
   initialMacros: MacroGoal[];
 }
 
-export function CaloriesClient({ initialMacros }: CaloriesClientProps) {
+export function MacrosClient({ initialMacros }: MacrosClientProps) {
   const meals = ["morning", "lunch", "afternoon", "dinner"] as const;
 
   // State for macros per meal
@@ -80,7 +80,7 @@ export function CaloriesClient({ initialMacros }: CaloriesClientProps) {
       const macro = macros[editingMeal];
       try {
         // Dynamically import the server action
-        const { upsertMacroGoal } = await import("@/app/actions/calories");
+        const { upsertMacroGoal } = await import("@/app/actions/macros");
         await upsertMacroGoal(editingMeal, macro.carbos, macro.fat, macro.protein);
         setEditingMeal(null);
       } catch (err: unknown) {
