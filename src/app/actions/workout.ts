@@ -18,8 +18,7 @@ export interface WorkoutDay {
   exercises: Exercise[];
 }
 
-export async function getWorkoutDays() {
-  const cookieStore = cookies();
+export async function getWorkoutDays(cookieStore: ReturnType<typeof cookies>) {
   const supabase = await createClient(cookieStore);
 
   const { data: { session } } = await supabase.auth.getSession();

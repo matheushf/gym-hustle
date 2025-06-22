@@ -14,8 +14,7 @@ export type MacroGoal = {
   updated_at: string;
 };
 
-export async function getMacroGoals() {
-  const cookieStore = cookies();
+export async function getMacroGoals(cookieStore: ReturnType<typeof cookies>) {
   const supabase = await createClient(cookieStore);
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return [];
