@@ -1,23 +1,18 @@
 import { getCycles } from "@/app/actions/cycles";
 import { CyclesClient } from "./CyclesClient";
-
-import { Suspense } from "react";
-import FullLoader from "@/components/ui/full-loader";
-
-async function Cycles() {
-  const [cycles] = await Promise.all([getCycles()]);
-
-  return (
-    <Suspense fallback={<FullLoader />}>
-      <CyclesClient initialCycles={cycles} />
-    </Suspense>
-  );
-}
+import { cookies } from "next/headers";
+import { unstable_cache } from "next/cache";
 
 export default async function Page() {
-  return (
-    <Suspense fallback={<FullLoader />}>
-      <Cycles />
-    </Suspense>
-  );
+  const cookieStore = cookies();
+  const cycles = await unstable_cache(
+    async () => await getCycles(cookieStore),
+    ["cycles"],
+    {
+      tags: ["cycles"],
+      revalidate: 60,
+    }
+  )();
+
+  return <CyclesClient initialCycles={cycles} />;
 }

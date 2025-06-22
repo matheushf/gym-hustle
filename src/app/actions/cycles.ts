@@ -3,8 +3,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
-export async function getCycles() {
-  const cookieStore = cookies();
+export async function getCycles(cookieStore: ReturnType<typeof cookies>) {
   const supabase = await createClient(cookieStore);
 
   const { data: { session } } = await supabase.auth.getSession();

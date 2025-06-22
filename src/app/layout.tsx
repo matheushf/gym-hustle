@@ -69,7 +69,7 @@ export default async function RootLayout({
         >
           <Header />
           {user && <MobileMenu userName={user.email ?? "User"} />}
-          {children}
+          <main className="md:ml-64">{children}</main>
           <Toaster />
         </ThemeProvider>
       </body>
