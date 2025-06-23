@@ -52,7 +52,7 @@ export function MobileMenu({ userName }: { userName: string }) {
 
       {/* Overlay and Drawer - only on mobile */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-300 md:hidden ${
+        className={`fixed inset-0 z-[40] transition-all duration-300 md:hidden ${
           menuOpen ? "bg-black/410" : "pointer-events-none bg-transparent"
         }`}
         style={{ visibility: menuOpen ? "visible" : "hidden" }}
@@ -111,6 +111,13 @@ export function MobileMenu({ userName }: { userName: string }) {
             >
               Macros
             </Link>
+            <Link
+              href="/exercises-archive"
+              className={linkClass("/exercises-archive")}
+              onClick={() => setMenuOpen(false)}
+            >
+              Archived Exercises
+            </Link>
             <Button
               variant="outline"
               size="sm"
@@ -148,6 +155,9 @@ export function MobileMenu({ userName }: { userName: string }) {
         </Link>
         <Link href="/macros" className={linkClass("/macros")}>
           Macros
+        </Link>
+        <Link href="/exercises-archive" className={linkClass("/exercises-archive")}>
+          Archived Exercises
         </Link>
         <Button
           variant="outline"

@@ -18,6 +18,15 @@ export interface WorkoutDay {
   exercises: Exercise[];
 }
 
+export interface ArchivedExercise {
+  id: string;
+  name: string;
+  sets: string;
+  weight?: number;
+  workout_day_id: string;
+  workout_days?: { name?: string };
+}
+
 export async function getWorkoutDays(cookieStore: ReturnType<typeof cookies>) {
   const supabase = await createClient(cookieStore);
 
@@ -38,6 +47,7 @@ export async function getWorkoutDays(cookieStore: ReturnType<typeof cookies>) {
       )
     `)
     .eq('user_id', session.user.id)
+    .eq('exercises.archived', false)
     .order('created_at');
 
   if (workoutDays) {
@@ -152,5 +162,59 @@ export async function updateExerciseOrder(exerciseId: string, newOrder: number) 
 
   if (error) throw error;
   
+  revalidatePath('/workout');
+}
+
+export async function getArchivedExercises(cookieStore: ReturnType<typeof cookies>): Promise<ArchivedExercise[]> {
+  const supabase = await createClient(cookieStore);
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return [];
+
+  // Get all workout day IDs for the user
+  const { data: workoutDays } = await supabase
+    .from('workout_days')
+    .select('id')
+    .eq('user_id', session.user.id);
+
+  if (!workoutDays || workoutDays.length === 0) return [];
+  const workoutDayIds = workoutDays.map((d: { id: string }) => d.id);
+
+  // Get all archived exercises for the user, including workout day name
+  const { data: exercises } = await supabase
+    .from('exercises')
+    .select(`id, name, sets, weight, workout_day_id, workout_days(name)`)
+    .eq('archived', true)
+    .in('workout_day_id', workoutDayIds)
+    .order('created_at');
+
+  return (exercises || []) as ArchivedExercise[];
+}
+
+export async function archiveExercise(exerciseId: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  const { error } = await supabase
+    .from('exercises')
+    .update({ archived: true })
+    .eq('id', exerciseId);
+
+  if (error) throw error;
+  revalidatePath('/workout');
+  revalidatePath('/exercises-archive');
+}
+
+export async function unarchiveExercise(exerciseId: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  const { error } = await supabase
+    .from('exercises')
+    .update({ archived: false })
+    .eq('id', exerciseId);
+
+  if (error) throw error;
+  revalidatePath('/exercises-archive');
   revalidatePath('/workout');
 } 

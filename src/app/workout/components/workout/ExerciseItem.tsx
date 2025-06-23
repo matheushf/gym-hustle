@@ -13,9 +13,10 @@ interface ExerciseItemProps {
   isDeleting: boolean;
   onRequestMove?: (exercise: Exercise, fromDayId: string) => void;
   fromDayId?: string;
+  onArchive?: (id: string) => void;
 }
 
-export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting, onRequestMove, fromDayId }: ExerciseItemProps) {
+export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting, onRequestMove, fromDayId, onArchive }: ExerciseItemProps) {
   const {
     attributes,
     listeners,
@@ -42,6 +43,11 @@ export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting, onRequest
 
   const handleCancelDelete = () => {
     setShowConfirm(false);
+  };
+
+  const handleArchive = () => {
+    setShowConfirm(false);
+    if (onArchive) onArchive(exercise.id);
   };
 
   return (
@@ -107,6 +113,15 @@ export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting, onRequest
         cancelLabel="Cancel"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
+        extraButtons={
+          <button
+            className="px-4 py-2 rounded bg-muted text-muted-foreground hover:bg-accent transition mr-2"
+            type="button"
+            onClick={handleArchive}
+          >
+            Archive
+          </button>
+        }
       />
     </>
   );

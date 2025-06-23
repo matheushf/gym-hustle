@@ -10,6 +10,7 @@ import {
   createWorkoutDay,
   type WorkoutDay,
   type Exercise,
+  archiveExercise,
 } from "@/app/actions/workout";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -303,6 +304,19 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
     }
   }
 
+  async function handleArchiveExercise(exerciseId: string) {
+    setWorkoutDays(prev => prev.map(day => ({
+      ...day,
+      exercises: day.exercises.filter(ex => ex.id !== exerciseId)
+    })));
+    try {
+      await archiveExercise(exerciseId);
+      toast.success("Exercise archived");
+    } catch {
+      toast.error("Failed to archive exercise");
+    }
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <main className="space-y-4">
@@ -330,6 +344,7 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
               onDeleteExercise={handleDeleteExercise}
               onCancelEdit={() => setEditingExercise(null)}
               onRequestMove={handleRequestMoveExercise}
+              onArchiveExercise={handleArchiveExercise}
             />
           </div>
         ))}
@@ -346,22 +361,45 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
               </>
             )}
             {!pendingMoveDayId ? (
-              <div className="flex flex-col gap-2 mb-4">
-                {DAYS_OF_WEEK.map(dayName => {
-                  const day = workoutDays.find(d => d.name === dayName);
-                  // Don't show current day as an option
-                  if (!day || day.id === moveExercise.fromDayId) return null;
-                  return (
-                    <button
-                      key={day.id}
-                      className="w-full py-2 px-4 rounded bg-muted hover:bg-primary hover:text-primary-foreground transition"
-                      onClick={() => setPendingMoveDayId(day.id)}
-                    >
-                      {dayName}
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                <div className="flex flex-col gap-2 mb-4">
+                  {DAYS_OF_WEEK.map(dayName => {
+                    const day = workoutDays.find(d => d.name === dayName);
+                    // Don't show current day as an option
+                    if (!day || day.id === moveExercise.fromDayId) return null;
+                    return (
+                      <button
+                        key={day.id}
+                        className="w-full py-2 px-4 rounded bg-muted hover:bg-primary hover:text-primary-foreground transition"
+                        onClick={() => setPendingMoveDayId(day.id)}
+                      >
+                        {dayName}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  className="w-full py-2 px-4 rounded bg-destructive text-destructive-foreground hover:bg-destructive/80 transition mb-2"
+                  onClick={async () => {
+                    if (!moveExercise.exercise) return;
+                    setShowMoveModal(false);
+                    setMoveExercise(null);
+                    setPendingMoveDayId(null);
+                    setWorkoutDays(prev => prev.map(day => ({
+                      ...day,
+                      exercises: day.exercises.filter(ex => ex.id !== moveExercise.exercise!.id)
+                    })));
+                    try {
+                      await archiveExercise(moveExercise.exercise.id);
+                      toast.success("Exercise archived");
+                    } catch {
+                      toast.error("Failed to archive exercise");
+                    }
+                  }}
+                >
+                  Archive Exercise
+                </button>
+              </>
             ) : (
               <div className="flex flex-col gap-4 mb-4">
                 <p className="text-sm">Are you sure you want to move <span className="font-bold">{moveExercise.exercise.name}</span> to <span className="font-bold">{DAYS_OF_WEEK.find(dayName => workoutDays.find(d => d.name === dayName)?.id === pendingMoveDayId)}</span>?</p>
