@@ -67,4 +67,23 @@ export async function deleteFoodIdea(id: string) {
     .eq("user_id", session.user.id);
 
   if (error) throw error;
+}
+
+export async function updateFoodIdea(id: string, newText: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("food_ideas")
+    .update({ text: newText })
+    .eq("id", id)
+    .eq("user_id", session.user.id);
+
+  if (error) throw error;
+
+  revalidateTag("food-ideas");
 } 

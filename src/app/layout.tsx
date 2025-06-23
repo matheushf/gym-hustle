@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import type { Viewport } from 'next'
+import type { Viewport } from "next";
 import { MobileMenu } from "@/components/MobileMenu";
 import { getCurrentUser } from "@/app/actions/auth";
 import { Header } from "@/components/Header";
@@ -37,41 +37,55 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-}
+};
 
 export default async function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
 
   return (
-    <html suppressHydrationWarning lang="en" translate="no" className="notranslate">
+    <html
+      suppressHydrationWarning
+      lang="en"
+      translate="no"
+      className="notranslate"
+    >
       <head>
         <meta name="googlebot" content="notranslate" />
         <meta name="google" content="notranslate" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/ios/192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icons/ios/512.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="192x192"
+          href="/icons/ios/192.png"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="512x512"
+          href="/icons/ios/512.png"
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Header />
-          {user && <MobileMenu userName={user.email ?? "User"} />}
-          <main className="md:ml-64">{children}</main>
-          <Toaster />
-        </ThemeProvider>
+        <div className={user ? "md:ml-64 pt-[60px]" : ""}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Header userEmail={user?.email ?? ""} />
+            <main>{children}</main>
+            <Toaster />
+          </ThemeProvider>
+        </div>
       </body>
     </html>
   );

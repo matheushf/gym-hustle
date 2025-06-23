@@ -1,6 +1,9 @@
-export function Header() {
+import { MobileMenu } from "./MobileMenu";
+
+export function Header({ userEmail }: { userEmail: string }) {
   return (
-    <header className="flex justify-center items-center mb-2 mt-5 md:ml-64">
+    <header className="fixed h-[60px] w-full top-0 left-0 flex justify-center items-center bg-background">
+        {userEmail && <MobileMenu userName={userEmail} />}
         <h1 className="text-2xl font-bold text-primary">Gym Hustle</h1>
     </header>
   );

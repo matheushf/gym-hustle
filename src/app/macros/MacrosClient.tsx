@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Edit, CheckIcon, Trash2 } from "lucide-react";
+import { Edit, CheckIcon, Trash2, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MacroGoal } from "@/app/actions/macros";
@@ -63,6 +63,18 @@ export function MacrosClient({
   // Add loading and error state for saving macros
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // State for which idea is being edited per meal (by id)
+  const [editingIdea, setEditingIdea] = useState<{
+    [meal in (typeof meals)[number]]?: string | null;
+  }>({});
+  // State for the edited text per meal/idea
+  const [editedIdeaText, setEditedIdeaText] = useState<{
+    [meal in (typeof meals)[number]]?: string;
+  }>({});
+  // Add loading and error state for editing ideas
+  const [editingIdeaSaving, setEditingIdeaSaving] = useState<string | null>(null);
+  const [editingIdeaError, setEditingIdeaError] = useState<string | null>(null);
 
   const handleEditClick = (meal: (typeof meals)[number]) => {
     setEditingMeal(meal);
@@ -149,6 +161,43 @@ export function MacrosClient({
     }
   };
 
+  const handleEditIdeaClick = (meal: (typeof meals)[number], ideaId: string, text: string) => {
+    setEditingIdea((prev) => ({ ...prev, [meal]: ideaId }));
+    setEditedIdeaText((prev) => ({ ...prev, [meal]: text }));
+    setEditingIdeaError(null);
+  };
+
+  const handleEditIdeaChange = (meal: (typeof meals)[number], value: string) => {
+    setEditedIdeaText((prev) => ({ ...prev, [meal]: value }));
+  };
+
+  const handleEditIdeaCancel = (meal: (typeof meals)[number]) => {
+    setEditingIdea((prev) => ({ ...prev, [meal]: null }));
+    setEditingIdeaError(null);
+  };
+
+  const handleEditIdeaSave = async (meal: (typeof meals)[number], ideaId: string) => {
+    setEditingIdeaSaving(ideaId);
+    setEditingIdeaError(null);
+    try {
+      const newText = editedIdeaText[meal]?.trim();
+      if (!newText) throw new Error("Text cannot be empty");
+      const { updateFoodIdea } = await import("@/app/actions/ideas");
+      await updateFoodIdea(ideaId, newText);
+      setIdeas((prev) => ({
+        ...prev,
+        [meal]: prev[meal].map((idea) =>
+          idea.id === ideaId ? { ...idea, text: newText } : idea
+        ),
+      }));
+      setEditingIdea((prev) => ({ ...prev, [meal]: null }));
+    } catch (err: unknown) {
+      setEditingIdeaError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setEditingIdeaSaving(null);
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col gap-4 p-6">
@@ -173,12 +222,12 @@ export function MacrosClient({
               </div>
 
               {/* Macros goal line */}
-              <div className="flex items-center gap-3 justify-center mb-4">
+              <div className="flex items-center gap-1 justify-around mb-4">
                 {(["carbos", "fat", "protein"] as const).map((macro) => (
                   <div
                     key={macro}
                     className={
-                      "flex flex-col items-center min-w-[80px] " +
+                      "flex flex-col items-center min-w-[60px] " +
                       (editingMeal === meal ? "gap-1" : "gap-0")
                     }
                   >
@@ -202,16 +251,32 @@ export function MacrosClient({
                     )}
                   </div>
                 ))}
-                <span className="ml-2 flex items-center self-end">
+                <span className="flex items-center self-end">
                   {editingMeal === meal ? (
-                    <Button
-                      onClick={handleSaveClick}
-                      aria-label="Save macros"
-                      variant="ghost"
-                      disabled={saving}
-                    >
-                      <CheckIcon className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button
+                        onClick={handleSaveClick}
+                        aria-label="Save macros"
+                        variant="ghost"
+                        className="p-2"
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckIcon className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => setEditingMeal(null)}
+                        aria-label="Cancel edit"
+                        className="p-2"
+                        variant="ghost"
+                        disabled={saving}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
                   ) : (
                     <Button
                       onClick={() => handleEditClick(meal)}
@@ -245,18 +310,70 @@ export function MacrosClient({
                       key={idea.id}
                       className="flex items-center justify-between p-2 border rounded-lg"
                     >
-                      <span>{idea.text}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteIdea(meal, idea.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {editingIdea[meal] === idea.id ? (
+                        <>
+                          <Input
+                            type="text"
+                            value={editedIdeaText[meal] ?? idea.text}
+                            onChange={(e) => handleEditIdeaChange(meal, e.target.value)}
+                            className="mr-2 flex-1"
+                            autoFocus
+                            disabled={editingIdeaSaving === idea.id}
+                            style={editingIdeaSaving === idea.id ? { opacity: 0.7 } : {}}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleEditIdeaSave(meal, idea.id)}
+                            disabled={editingIdeaSaving === idea.id}
+                            aria-label="Save idea"
+                          >
+                            {editingIdeaSaving === idea.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckIcon className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleEditIdeaCancel(meal)}
+                            aria-label="Cancel edit"
+                            disabled={editingIdeaSaving === idea.id}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <span>{idea.text}</span>
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleEditIdeaClick(meal, idea.id, idea.text)}
+                              aria-label="Edit idea"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteIdea(meal, idea.id)}
+                              aria-label="Delete idea"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
+                {editingIdeaError && (
+                  <p className="text-destructive text-xs text-center mt-1">Error: {editingIdeaError}</p>
+                )}
                 <div className="flex gap-2">
                   <Input
                     type="text"

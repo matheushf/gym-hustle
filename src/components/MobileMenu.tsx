@@ -30,7 +30,7 @@ export function MobileMenu({ userName }: { userName: string }) {
     <>
     {!menuOpen && (
       <button
-        className="fixed top-4 left-1 z-50 p-2 rounded-md bg-background shadow-md md:hidden"
+        className="fixed left-1 top-3 z-50 p-2 rounded-md bg-background shadow-md md:hidden"
         aria-label="Open menu"
         onClick={() => setMenuOpen(true)}
       >
@@ -59,7 +59,7 @@ export function MobileMenu({ userName }: { userName: string }) {
         onClick={() => setMenuOpen(false)}
       >
         <nav
-          className={`fixed top-0 left-0 h-full w-74 bg-sidebar shadow-lg transform transition-transform duration-300 ${
+          className={`fixed left-0 h-full w-74 bg-sidebar shadow-lg transform transition-transform duration-300 ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
           onClick={(e) => e.stopPropagation()}
