@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import {
   updateExercise,
@@ -66,6 +66,11 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
 
   // Create refs for each day
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const currentDayName = useMemo(() => {
+    const today = new Date();
+    return DAYS_OF_WEEK[today.getDay() === 0 ? 6 : today.getDay() - 1];
+  }, []);
 
   useEffect(() => {
     const today = new Date();
@@ -320,34 +325,38 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <main className="space-y-4">
-        {DAYS_OF_WEEK.map((dayName) => (
-          <div
-            key={dayName}
-            ref={el => { dayRefs.current[dayName] = el; }}
-          >
-            <DaySection
-              dayName={dayName}
-              dayWorkout={getDayWorkout(dayName)}
-              isLoading={false}
-              isAddingExercise={isAddingExercise}
-              editingExercise={editingExercise}
-              newExercise={newExercise}
-              loadingStates={loadingStates}
-              onDragEnd={handleDragEnd}
-              onAddExerciseClick={handleAddExerciseClick}
-              onAddExercise={handleAddExercise}
-              onCancelAdd={handleCancelAdd}
-              onUpdateExercise={handleUpdateExercise}
-              onEditingExerciseChange={handleEditingExerciseChange}
-              onNewExerciseChange={handleNewExerciseChange}
-              onEditExercise={handleEditExercise}
-              onDeleteExercise={handleDeleteExercise}
-              onCancelEdit={() => setEditingExercise(null)}
-              onRequestMove={handleRequestMoveExercise}
-              onArchiveExercise={handleArchiveExercise}
-            />
-          </div>
-        ))}
+        {DAYS_OF_WEEK.map((dayName) => {
+          const isCurrentDay = dayName === currentDayName;
+          return (
+            <div
+              key={dayName}
+              ref={el => { dayRefs.current[dayName] = el; }}
+            >
+              <DaySection
+                dayName={dayName}
+                dayWorkout={getDayWorkout(dayName)}
+                isLoading={false}
+                isAddingExercise={isAddingExercise}
+                editingExercise={editingExercise}
+                newExercise={newExercise}
+                loadingStates={loadingStates}
+                onDragEnd={handleDragEnd}
+                onAddExerciseClick={handleAddExerciseClick}
+                onAddExercise={handleAddExercise}
+                onCancelAdd={handleCancelAdd}
+                onUpdateExercise={handleUpdateExercise}
+                onEditingExerciseChange={handleEditingExerciseChange}
+                onNewExerciseChange={handleNewExerciseChange}
+                onEditExercise={handleEditExercise}
+                onDeleteExercise={handleDeleteExercise}
+                onCancelEdit={() => setEditingExercise(null)}
+                onRequestMove={handleRequestMoveExercise}
+                onArchiveExercise={handleArchiveExercise}
+                isCurrentDay={isCurrentDay}
+              />
+            </div>
+          );
+        })}
       </main>
       {showMoveModal && moveExercise?.exercise && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
