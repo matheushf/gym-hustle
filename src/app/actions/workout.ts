@@ -111,6 +111,8 @@ export async function updateExercise(exerciseId: string, data: {
   name?: string;
   sets?: string;
   weight?: number;
+  workout_day_id?: string;
+  order?: number;
 }) {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);

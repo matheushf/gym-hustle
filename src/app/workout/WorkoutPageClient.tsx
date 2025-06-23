@@ -56,6 +56,12 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
     editingId: null as string | null,
     deletingId: null as string | null,
   });
+  const [moveExercise, setMoveExercise] = useState<{
+    exercise: Exercise | null;
+    fromDayId: string | null;
+  } | null>(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [pendingMoveDayId, setPendingMoveDayId] = useState<string | null>(null);
 
   // Create refs for each day
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -252,6 +258,51 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
     setNewExercise(prev => ({ ...prev, [field]: value }));
   }
 
+  // Handler to open the move-to-day modal
+  function handleRequestMoveExercise(exercise: Exercise, fromDayId: string) {
+    setMoveExercise({ exercise, fromDayId });
+    setShowMoveModal(true);
+  }
+
+  // Handler to actually move the exercise
+  async function handleMoveExerciseToDay(toDayId: string) {
+    if (!moveExercise?.exercise || !moveExercise.fromDayId) return;
+    const exercise = moveExercise.exercise;
+    const fromDayId = moveExercise.fromDayId;
+    setShowMoveModal(false);
+    setMoveExercise(null);
+    try {
+      // Remove from old day, add to new day at the end
+      setWorkoutDays(prev => {
+        let removedExercise: Exercise | null = null;
+        const newDays = prev.map(day => {
+          if (day.id === fromDayId) {
+            const filtered = day.exercises.filter(ex => {
+              if (ex.id === exercise.id) {
+                removedExercise = ex;
+                return false;
+              }
+              return true;
+            });
+            return { ...day, exercises: filtered };
+          }
+          return day;
+        }).map(day => {
+          if (day.id === toDayId && removedExercise) {
+            return { ...day, exercises: [...day.exercises, { ...removedExercise, order: day.exercises.length }] };
+          }
+          return day;
+        });
+        return newDays;
+      });
+      // Update backend: change workout_day_id and order
+      await updateExercise(exercise.id, { workout_day_id: toDayId, order: workoutDays.find(d => d.id === toDayId)?.exercises.length || 0 });
+      toast.success("Exercise moved successfully");
+    } catch {
+      toast.error("Failed to move exercise");
+    }
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <main className="space-y-4">
@@ -278,10 +329,67 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
               onEditExercise={handleEditExercise}
               onDeleteExercise={handleDeleteExercise}
               onCancelEdit={() => setEditingExercise(null)}
+              onRequestMove={handleRequestMoveExercise}
             />
           </div>
         ))}
       </main>
+      {showMoveModal && moveExercise?.exercise && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-card text-card-foreground rounded-lg shadow-lg p-6 w-full max-w-xs border">
+            {!pendingMoveDayId && (
+              <>
+                <h2 className="text-lg font-semibold mb-2">Move Exercise</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Select a day to move <span className="font-bold">{moveExercise.exercise.name}</span> to:
+                </p>
+              </>
+            )}
+            {!pendingMoveDayId ? (
+              <div className="flex flex-col gap-2 mb-4">
+                {DAYS_OF_WEEK.map(dayName => {
+                  const day = workoutDays.find(d => d.name === dayName);
+                  // Don't show current day as an option
+                  if (!day || day.id === moveExercise.fromDayId) return null;
+                  return (
+                    <button
+                      key={day.id}
+                      className="w-full py-2 px-4 rounded bg-muted hover:bg-primary hover:text-primary-foreground transition"
+                      onClick={() => setPendingMoveDayId(day.id)}
+                    >
+                      {dayName}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 mb-4">
+                <p className="text-sm">Are you sure you want to move <span className="font-bold">{moveExercise.exercise.name}</span> to <span className="font-bold">{DAYS_OF_WEEK.find(dayName => workoutDays.find(d => d.name === dayName)?.id === pendingMoveDayId)}</span>?</p>
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 py-2 px-4 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition"
+                    onClick={() => { handleMoveExerciseToDay(pendingMoveDayId); setPendingMoveDayId(null); }}
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    className="flex-1 py-2 px-4 rounded bg-muted text-muted-foreground hover:bg-accent transition"
+                    onClick={() => setPendingMoveDayId(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            <button
+              className="w-full py-2 px-4 rounded bg-muted text-muted-foreground hover:bg-accent transition mt-2"
+              onClick={() => { setShowMoveModal(false); setMoveExercise(null); setPendingMoveDayId(null); }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

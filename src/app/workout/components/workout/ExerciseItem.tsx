@@ -11,9 +11,11 @@ interface ExerciseItemProps {
   onEdit: (exercise: Exercise) => void;
   onDelete: (id: string) => void;
   isDeleting: boolean;
+  onRequestMove?: (exercise: Exercise, fromDayId: string) => void;
+  fromDayId?: string;
 }
 
-export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting }: ExerciseItemProps) {
+export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting, onRequestMove, fromDayId }: ExerciseItemProps) {
   const {
     attributes,
     listeners,
@@ -54,6 +56,8 @@ export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting }: Exercis
             className="touch-none p-2 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
             {...attributes}
             {...listeners}
+            type="button"
+            onClick={() => { if (onRequestMove && fromDayId) onRequestMove(exercise, fromDayId); }}
           >
             <GripVertical className="h-4 w-4" />
           </button>
