@@ -9,6 +9,8 @@ interface ConfirmModalProps {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  extraButtons?: React.ReactNode;
+  confirmVariant?: "destructive" | "default" | "outline";
 }
 
 export function ConfirmModal({
@@ -19,6 +21,8 @@ export function ConfirmModal({
   cancelLabel = "Cancel",
   onConfirm,
   onCancel,
+  extraButtons,
+  confirmVariant = "destructive",
 }: ConfirmModalProps) {
   if (!open) return null;
 
@@ -28,10 +32,11 @@ export function ConfirmModal({
         <h2 className="text-lg font-semibold mb-2">{title}</h2>
         <p className="text-sm text-muted-foreground mb-4">{description}</p>
         <div className="flex justify-end gap-2">
+          {extraButtons}
           <Button variant="ghost" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button variant={confirmVariant} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

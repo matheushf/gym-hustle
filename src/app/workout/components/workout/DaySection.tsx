@@ -26,6 +26,7 @@ interface DaySectionProps {
   onDeleteExercise: (id: string) => void;
   onCancelEdit: () => void;
   onRequestMove?: (exercise: Exercise, fromDayId: string) => void;
+  onArchiveExercise?: (id: string) => void;
 }
 
 interface EditingExercise {
@@ -66,6 +67,7 @@ export function DaySection({
   onDeleteExercise,
   onCancelEdit,
   onRequestMove,
+  onArchiveExercise,
 }: DaySectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -178,6 +180,7 @@ export function DaySection({
                         isDeleting={loadingStates.deletingId === exercise.id}
                         onRequestMove={onRequestMove}
                         fromDayId={dayWorkout.id}
+                        onArchive={onArchiveExercise}
                       />
                     )
                   ))}
