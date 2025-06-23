@@ -4,7 +4,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import type { Viewport } from "next";
-import { MobileMenu } from "@/components/MobileMenu";
 import { getCurrentUser } from "@/app/actions/auth";
 import { Header } from "@/components/Header";
 
