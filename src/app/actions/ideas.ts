@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { revalidateTag } from "next/cache";
+import type { Session } from "@supabase/supabase-js";
 
 export type FoodIdea = {
   id: string;
@@ -12,17 +13,16 @@ export type FoodIdea = {
   created_at: string;
 };
 
-export async function getFoodIdeas(cookieStore: ReturnType<typeof cookies>) {
+export async function getFoodIdeas(cookieStore: ReturnType<typeof cookies>, session: Session | null) {
   const supabase = await createClient(cookieStore);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return [];
+  const { data: { session: sessionInner } } = await supabase.auth.getSession();
+  const effectiveSession = session || sessionInner;
+  if (!effectiveSession) return [];
 
   const { data, error } = await supabase
     .from("food_ideas")
     .select("id, user_id, meal, text, created_at")
-    .eq("user_id", session.user.id);
+    .eq("user_id", effectiveSession.user.id);
 
   if (error) throw error;
   return data as FoodIdea[];

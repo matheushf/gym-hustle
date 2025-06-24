@@ -3,12 +3,17 @@ import { MacrosClient } from "./MacrosClient";
 import { getMacroGoals } from "@/app/actions/macros";
 import { cookies } from "next/headers";
 import { getFoodIdeas } from "../actions/ideas";
+import { createClient } from "@/utils/supabase/server";
 
 export default async function Page() {
   const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id || "anonymous";
+
   const initialMacros = await unstable_cache(
-    async () => await getMacroGoals(cookieStore),
-    ["macro-goals"],
+    async () => await getMacroGoals(cookieStore, session),
+    ["macro-goals", userId],
     {
       tags: ["macro-goals"],
       revalidate: 60,
@@ -16,8 +21,8 @@ export default async function Page() {
   )();
 
   const initialIdeas = await unstable_cache(
-    async () => await getFoodIdeas(cookieStore),
-    ["food-ideas"],
+    async () => await getFoodIdeas(cookieStore, session),
+    ["food-ideas", userId],
     {
       tags: ["food-ideas"],
       revalidate: 60,

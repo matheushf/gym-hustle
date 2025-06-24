@@ -1,8 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import type { Session } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 
 export interface Exercise {
   id: string;
@@ -27,11 +28,10 @@ export interface ArchivedExercise {
   workout_days?: { name?: string };
 }
 
-export async function getWorkoutDays(cookieStore: ReturnType<typeof cookies>) {
-  const supabase = await createClient(cookieStore);
-
-  const { data: { session } } = await supabase.auth.getSession();
+export async function getWorkoutDays(cookieStore: ReturnType<typeof cookies>, session: Session | null) {
   if (!session) return [];
+
+  const supabase = await createClient(cookieStore);
 
   const { data: workoutDays } = await supabase
     .from('workout_days')

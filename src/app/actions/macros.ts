@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import type { Session } from "@supabase/supabase-js";
 
 export type MacroGoal = {
   id: string;
@@ -14,9 +15,8 @@ export type MacroGoal = {
   updated_at: string;
 };
 
-export async function getMacroGoals(cookieStore: ReturnType<typeof cookies>) {
+export async function getMacroGoals(cookieStore: ReturnType<typeof cookies>, session: Session | null) {
   const supabase = await createClient(cookieStore);
-  const { data: { session } } = await supabase.auth.getSession();
   if (!session) return [];
 
   const { data, error } = await supabase

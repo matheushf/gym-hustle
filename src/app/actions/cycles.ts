@@ -2,14 +2,11 @@
 
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import type { Session } from "@supabase/supabase-js";
 
-export async function getCycles(cookieStore: ReturnType<typeof cookies>) {
+export async function getCycles(cookieStore: ReturnType<typeof cookies>, session: Session | null) {
   const supabase = await createClient(cookieStore);
-
-  const { data: { session } } = await supabase.auth.getSession();
   if (!session) return [];
-
-  console.log('session', session.user.id);
 
   const { data, error } = await supabase
     .from("cycles")

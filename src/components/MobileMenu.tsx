@@ -3,20 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { logout } from "@/app/actions/auth";
 
 export function MobileMenu({ userName }: { userName: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const pathname = usePathname();
-
+  const router = useRouter();
+  
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    // TODO: Add actual sign out logic here
-    setTimeout(() => {
-      setIsSigningOut(false);
-      setMenuOpen(false);
-    }, 1000);
+    await logout();
+    setIsSigningOut(false);
+    setMenuOpen(false);
+    router.push("/auth/login");
   };
 
   const linkClass = (href: string) =>
