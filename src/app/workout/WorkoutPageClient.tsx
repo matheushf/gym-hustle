@@ -77,7 +77,7 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
     const currentDayName = DAYS_OF_WEEK[today.getDay() === 0 ? 6 : today.getDay() - 1];
     const ref = dayRefs.current[currentDayName];
     if (ref) {
-      ref.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: ref.offsetTop - 90, behavior: "smooth" });
     }
   }, []); // Only on mount
 
