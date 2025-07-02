@@ -13,6 +13,7 @@ import {
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import jsPDF from "jspdf";
 
 export function SavedWorkoutsClient({ workouts, selectedWorkoutId }: { workouts: Workout[]; selectedWorkoutId: string | null }) {
   const [isPending, startTransition] = useTransition();
@@ -26,8 +27,67 @@ export function SavedWorkoutsClient({ workouts, selectedWorkoutId }: { workouts:
     });
   }
 
+  function handleExportPDF() {
+    const selectedWorkout = workouts.find(w => w.id === selectedWorkoutId);
+    if (!selectedWorkout) return;
+    const doc = new jsPDF();
+    let y = 15;
+    doc.setFontSize(18);
+    doc.text(selectedWorkout.name, 10, y);
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(`Created: ${new Date(selectedWorkout.created_at).toLocaleDateString()}`, 10, y);
+    y += 10;
+    if (!selectedWorkout.days || selectedWorkout.days.length === 0) {
+      doc.text("No days in this workout.", 10, y);
+    } else {
+      selectedWorkout.days.forEach((day, dayIdx) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(`Day ${dayIdx + 1}: ${day.name}`, 10, y);
+        y += 8;
+        doc.setFont("helvetica", "normal");
+        if (!day.exercises || day.exercises.length === 0) {
+          doc.text("  No exercises", 12, y);
+          y += 8;
+        } else {
+          day.exercises.forEach((ex, exIdx) => {
+            doc.text(`  ${exIdx + 1}. ${ex.name}`, 12, y);
+            y += 7;
+            if (ex.sets && ex.sets.length > 0) {
+              ex.sets.forEach((set) => {
+                doc.text(
+                  `    Set ${set.set_number}: ${set.reps} reps @ ${set.weight ?? '-'} kg`,
+                  14,
+                  y
+                );
+                y += 6;
+                if (y > 270) { doc.addPage(); y = 15; }
+              });
+            } else {
+              doc.text("    No sets", 14, y);
+              y += 6;
+            }
+            if (y > 270) { doc.addPage(); y = 15; }
+          });
+        }
+        y += 4;
+        if (y > 270) { doc.addPage(); y = 15; }
+      });
+    }
+    doc.save(`${selectedWorkout.name.replace(/[^a-z0-9]/gi, '_')}_workout.pdf`);
+  }
+
   return (
     <div className="max-w-2xl mx-auto p-4">
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          onClick={handleExportPDF}
+          disabled={!selectedWorkoutId}
+        >
+          Export as PDF
+        </Button>
+      </div>
       <h1 className="text-2xl font-bold mb-6 text-center">Saved Workouts</h1>
       {workouts.length === 0 ? (
         <div className="text-muted-foreground text-center">No saved workouts found.</div>
