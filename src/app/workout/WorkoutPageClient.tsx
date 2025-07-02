@@ -477,97 +477,101 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
-      {/* Title and New Workout Button Row */}
-      <div className="flex items-center justify-between mb-6 w-full">
-        <div className="flex-1 min-w-0">
-          {/* Workout Title and Confirm/Discard for new workout */}
-          {isCreatingNew ? (
-            <div className="flex flex-1 flex-row items-center justify-center gap-2 w-full">
+      <div className="flex-1 min-w-0 mb-4">
+        {/* Workout Title and Confirm/Discard for new workout */}
+        {isCreatingNew ? (
+          <div className="flex flex-1 flex-row items-center justify-center gap-2 w-full">
+            <Input
+              value={newWorkoutTitle}
+              onChange={e => setNewWorkoutTitle(e.target.value)}
+              autoFocus
+              disabled={loadingStates.savingTitle}
+            />
+            <div className="flex gap-2">
+              <Button
+                aria-label="Confirm new workout"
+                variant="outline"
+                onClick={handleConfirmNewWorkout}
+                disabled={loadingStates.savingTitle}
+              >
+                <CheckIcon className="w-4 h-4 inline text-green-600 mr-2" /> Create
+              </Button>
+              <Button
+                aria-label="Discard new workout"
+                variant="outline"
+                onClick={handleDiscardNewWorkout}
+                disabled={loadingStates.savingTitle}
+              >
+                <X className="w-4 h-4 inline text-red-600" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          editingTitle ? (
+            <div className="flex flex-row flex-1 items-center justify-between gap-2 w-full">
               <Input
-                value={newWorkoutTitle}
-                onChange={e => setNewWorkoutTitle(e.target.value)}
+                value={tempTitle}
+                onChange={e => setTempTitle(e.target.value)}
                 autoFocus
+                onKeyDown={async e => {
+                  if (e.key === 'Enter') {
+                    await handleSaveTitle();
+                  } else if (e.key === 'Escape') {
+                    setTempTitle(workoutTitle);
+                    setEditingTitle(false);
+                  }
+                }}
                 disabled={loadingStates.savingTitle}
               />
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
-                  aria-label="Confirm new workout"
-                  variant="outline"
-                  onClick={handleConfirmNewWorkout}
-                  disabled={loadingStates.savingTitle}
-                >
-                  <CheckIcon className="w-5 h-5 inline text-green-600 mr-2" /> Save Workout
-                </Button>
-                <Button
-                  aria-label="Discard new workout"
-                  variant="outline"
-                  onClick={handleDiscardNewWorkout}
-                  disabled={loadingStates.savingTitle}
-                >
-                  <X className="w-5 h-5 inline text-red-600 mr-2" /> Discard
-                </Button>
-              </div>
-            </div>
-          ) : (
-            editingTitle ? (
-              <div className="flex items-center gap-2 w-full max-w-xs">
-                <input
-                  className="border rounded px-2 py-1 flex-1 text-lg font-bold text-left"
-                  value={tempTitle}
-                  onChange={e => setTempTitle(e.target.value)}
-                  autoFocus
-                  onKeyDown={async e => {
-                    if (e.key === 'Enter') {
-                      await handleSaveTitle();
-                    } else if (e.key === 'Escape') {
-                      setTempTitle(workoutTitle);
-                      setEditingTitle(false);
-                    }
-                  }}
-                  disabled={loadingStates.savingTitle}
-                />
-                <button
                   aria-label="Save title"
-                  className="text-green-600 hover:text-green-800"
+                  variant="outline"
+                  className="text-green-600"
                   onClick={handleSaveTitle}
                   disabled={loadingStates.savingTitle}
                 >
-                  <CheckIcon className="w-5 h-5" />
-                </button>
-                <button
+                  <CheckIcon className="w-4 h-4" />
+                </Button>
+                <Button
                   aria-label="Cancel edit"
-                  className="text-red-600 hover:text-red-800"
+                  variant="outline"
+                  className="text-red-600"
                   onClick={() => {
                     setTempTitle(workoutTitle);
                     setEditingTitle(false);
                   }}
                   disabled={loadingStates.savingTitle}
                 >
-                  <X className="w-5 h-5" />
-                </button>
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
-            ) : (
-              <h1
-                className="text-2xl font-bold text-left flex items-center gap-2 cursor-pointer"
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <h3
+                className="text-1xl font-bold text-left flex items-center gap-2 cursor-pointer"
                 onClick={() => setEditingTitle(true)}
                 title="Click to edit title"
               >
                 {workoutTitle}
-                <Edit className="inline w-4 h-4 text-muted-foreground hover:text-primary self-center mt-1" />
-              </h1>
-            )
-          )}
-        </div>
-        {/* New Workout Button */}
-        {!isCreatingNew && (
-          <Button
-            variant="outline"
-            className="ml-4"
-            onClick={handleStartNewWorkout}
-          >
-            <PlusIcon className="w-4 h-4 mr-2" />
-            New Workout
-          </Button>
+              </h3>
+              {!isCreatingNew && (
+                <div className="flex items-center justify-center">
+                  <Button variant="outline" className="flex-initial mr-2" onClick={() => setEditingTitle(true)}>
+                    <Edit className="inline w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-initial"
+                    onClick={handleStartNewWorkout}
+                    >
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
         )}
       </div>
       <main className="space-y-4">
