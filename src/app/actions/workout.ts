@@ -342,3 +342,18 @@ export async function getAllWorkoutsForUser() {
   );
   return workouts;
 }
+
+// Set the selected workout for the current user
+export async function setSelectedWorkout(workoutId: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  // Upsert into user_profile
+  const { error } = await supabase
+    .from("user_profile")
+    .upsert({ user_id: session.user.id, selected_workout_id: workoutId }, { onConflict: "user_id" });
+  if (error) throw error;
+  revalidatePath("/saved-workouts");
+  revalidatePath("/workout");
+}

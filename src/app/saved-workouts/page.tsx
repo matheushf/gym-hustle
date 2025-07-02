@@ -1,7 +1,9 @@
 import { SavedWorkoutsClient } from "./SavedWorkoutsClient";
 import { getAllWorkoutsForUser } from "@/app/actions/workout";
+import { getSelectedWorkoutId } from "@/app/actions/auth";
 
 export default async function Page() {
   const workouts = await getAllWorkoutsForUser();
-  return <SavedWorkoutsClient workouts={workouts} />;
+  const selectedWorkoutId = await getSelectedWorkoutId();
+  return <SavedWorkoutsClient workouts={workouts} selectedWorkoutId={selectedWorkoutId} />;
 } 
