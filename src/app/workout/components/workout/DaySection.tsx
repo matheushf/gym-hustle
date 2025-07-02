@@ -28,6 +28,7 @@ interface DaySectionProps {
   onRequestMove?: (exercise: Exercise, fromDayId: string) => void;
   onArchiveExercise?: (id: string) => void;
   isCurrentDay?: boolean;
+  isCreatingNew?: boolean;
 }
 
 interface EditingExercise {
@@ -70,6 +71,7 @@ export function DaySection({
   onRequestMove,
   onArchiveExercise,
   isCurrentDay = false,
+  isCreatingNew = false,
 }: DaySectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -105,7 +107,7 @@ export function DaySection({
   const hasExercises = exercises.length > 0;
 
   return (
-    <div className={`p-6 rounded-lg border bg-card text-card-foreground shadow-sm${isCurrentDay ? ' border-1 border-primary' : ''}`}>
+    <div className={`p-6 rounded-lg border bg-card text-card-foreground shadow-sm${isCurrentDay && !isCreatingNew ? ' border-1 border-primary' : ''}`}>
       <h2 className="text-xl font-semibold mb-6">{dayName}</h2>
 
       {isLoading ? (
