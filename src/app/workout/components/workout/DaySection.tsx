@@ -6,14 +6,15 @@ import { Loader2, Plus, X, CheckIcon } from "lucide-react";
 import { ExerciseItem } from "./ExerciseItem";
 import type { Exercise, WorkoutDay } from "@/app/actions/workout";
 import { useEffect, useRef } from 'react';
+import { EditingExercise, NewExercise } from "@/app/workout/types";
 
 interface DaySectionProps {
   dayName: string;
   dayWorkout: WorkoutDay | undefined;
   isLoading: boolean;
   isAddingExercise: string | null;
-  editingExercise: { id: string; name: string; sets: { id?: string; reps: string; weight: string }[] } | null;
-  newExercise: { name: string; sets: { reps: string; weight: string }[] };
+  editingExercise: EditingExercise | null;
+  newExercise: NewExercise;
   loadingStates: LoadingStates;
   onDragEnd: (event: DragEndEvent, dayId: string) => void;
   onAddExerciseClick: (dayName: string, existingDayId?: string) => void;
@@ -35,19 +36,6 @@ interface DaySectionProps {
   onEditingExerciseSetChange: (idx: number, field: 'reps' | 'weight', value: string) => void;
   onRemoveEditingExerciseSet: (idx: number) => void;
   onAddEditingExerciseSet: () => void;
-}
-
-interface EditingExercise {
-  id: string;
-  name: string;
-  sets: string;
-  weight: string;
-}
-
-interface NewExercise {
-  name: string;
-  sets: string;
-  weight: string;
 }
 
 interface LoadingStates {

@@ -24,33 +24,12 @@ import { CheckIcon, X, Edit, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from 'next/navigation';
+import { EditingExercise, NewExercise } from "@/app/workout/types";
 
 interface WorkoutPageClientProps {
   workoutId: string;
   initialWorkoutTitle: string;
   initialWorkoutDays: WorkoutDay[];
-}
-
-interface EditingExerciseSet {
-  id?: string;
-  reps: string;
-  weight: string;
-}
-
-interface EditingExercise {
-  id: string;
-  name: string;
-  sets: EditingExerciseSet[];
-}
-
-interface NewExerciseSet {
-  reps: string;
-  weight: string;
-}
-
-interface NewExercise {
-  name: string;
-  sets: NewExerciseSet[];
 }
 
 const DAYS_OF_WEEK = [
