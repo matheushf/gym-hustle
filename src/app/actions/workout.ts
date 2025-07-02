@@ -104,6 +104,18 @@ export async function createWorkoutDay(name: string, workoutId: string) {
   if (!session) throw new Error("Not authenticated");
   const userId = session.user.id;
 
+  // Check if a day with the same name already exists for this workout
+  const { data: existingDay, error: existingDayError } = await supabase
+    .from("workout_days")
+    .select("id")
+    .eq("workout_id", workoutId)
+    .eq("name", name)
+    .maybeSingle();
+  if (existingDayError) throw existingDayError;
+  if (existingDay) {
+    throw new Error(`A day named '${name}' already exists for this workout.`);
+  }
+
   const { data, error } = await supabase
     .from("workout_days")
     .insert([{ name, user_id: userId, workout_id: workoutId }])
@@ -611,4 +623,61 @@ export async function getInitialWorkoutForUser(supabase: ReturnType<typeof creat
   }
 
   return workout || null;
+}
+
+// Delete a workout and all its related days and exercises
+export async function deleteWorkout(workoutId: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  // Get userId from workout
+  const { data: workout } = await supabase
+    .from("workouts")
+    .select("user_id")
+    .eq("id", workoutId)
+    .single();
+  const userId = workout?.user_id;
+
+  // Delete all exercises in all days of this workout
+  const { data: days } = await supabase
+    .from("workout_days")
+    .select("id")
+    .eq("workout_id", workoutId);
+  if (days && days.length > 0) {
+    const dayIds = days.map((d: { id: string }) => d.id);
+    // Delete exercises for each day
+    await supabase
+      .from("exercises")
+      .delete()
+      .in("workout_day_id", dayIds);
+    // Optionally, delete exercise_sets if not handled by cascade
+    await supabase
+      .from("exercise_sets")
+      .delete()
+      .in(
+        "exercise_id",
+        (
+          await supabase
+            .from("exercises")
+            .select("id")
+            .in("workout_day_id", dayIds)
+        ).data?.map((ex: { id: string }) => ex.id) || []
+      );
+    // Delete workout_days
+    await supabase
+      .from("workout_days")
+      .delete()
+      .in("id", dayIds);
+  }
+
+  // Delete the workout itself
+  const { error } = await supabase
+    .from("workouts")
+    .delete()
+    .eq("id", workoutId);
+  if (error) throw error;
+
+  revalidatePath("/saved-workouts");
+  revalidatePath("/workout");
+  if (userId) revalidateTag(`workout-${userId}`);
 }
