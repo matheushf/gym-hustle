@@ -6,6 +6,7 @@ import { Loader2, Plus, X, CheckIcon } from "lucide-react";
 import { ExerciseItem } from "./ExerciseItem";
 import type { Exercise, WorkoutDay } from "@/app/actions/workout";
 import { useEffect, useRef } from 'react';
+import { EditingExercise, NewExercise } from "@/app/workout/types";
 
 interface DaySectionProps {
   dayName: string;
@@ -29,19 +30,12 @@ interface DaySectionProps {
   onArchiveExercise?: (id: string) => void;
   isCurrentDay?: boolean;
   isCreatingNew?: boolean;
-}
-
-interface EditingExercise {
-  id: string;
-  name: string;
-  sets: string;
-  weight: string;
-}
-
-interface NewExercise {
-  name: string;
-  sets: string;
-  weight: string;
+  onNewExerciseSetChange: (idx: number, field: 'reps' | 'weight', value: string) => void;
+  onAddNewExerciseSet: () => void;
+  onRemoveNewExerciseSet: (idx: number) => void;
+  onEditingExerciseSetChange: (idx: number, field: 'reps' | 'weight', value: string) => void;
+  onRemoveEditingExerciseSet: (idx: number) => void;
+  onAddEditingExerciseSet: () => void;
 }
 
 interface LoadingStates {
@@ -72,6 +66,12 @@ export function DaySection({
   onArchiveExercise,
   isCurrentDay = false,
   isCreatingNew = false,
+  onNewExerciseSetChange,
+  onAddNewExerciseSet,
+  onRemoveNewExerciseSet,
+  onEditingExerciseSetChange,
+  onRemoveEditingExerciseSet,
+  onAddEditingExerciseSet,
 }: DaySectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -137,20 +137,39 @@ export function DaySection({
                             onChange={(e) => onEditingExerciseChange('name', e.target.value)}
                             className="w-full bg-transparent border-muted"
                           />
-                          <div className="flex items-center gap-3">
-                            <Input
-                              value={editingExercise.sets}
-                              onChange={(e) => onEditingExerciseChange('sets', e.target.value)}
-                              className="flex-1 bg-transparent border-muted"
-                            />
-                            <Input
-                              ref={weightInputRef}
-                              type="number"
-                              value={editingExercise.weight}
-                              onChange={(e) => onEditingExerciseChange('weight', e.target.value)}
-                              className="flex-1 bg-transparent border-muted"
-                            />
-                            <div className="flex gap-1">
+                          {(editingExercise.sets as { id?: string; reps: string; weight: string }[]).map((set: { id?: string; reps: string; weight: string }, idx: number) => (
+                            <div className="flex items-center gap-3 mb-2" key={set.id || idx}>
+                              <Input
+                                placeholder="1x10"
+                                value={set.reps}
+                                onChange={(e) => onEditingExerciseSetChange(idx, 'reps', e.target.value)}
+                                className="flex-1 bg-transparent border-muted"
+                              />
+                              <Input
+                                placeholder="10kg"
+                                type="number"
+                                value={set.weight}
+                                onChange={(e) => onEditingExerciseSetChange(idx, 'weight', e.target.value)}
+                                className="flex-1 bg-transparent border-muted"
+                              />
+                              <Button
+                                variant="ghost"
+                                onClick={() => onRemoveEditingExerciseSet(idx)}
+                                disabled={editingExercise.sets.length === 1}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={onAddEditingExerciseSet}
+                              className="flex-initial"
+                            >
+                              Add Set
+                            </Button>
+                            <div className="flex gap-1 ml-auto">
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -160,7 +179,9 @@ export function DaySection({
                                 {loadingStates.editingId === exercise.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  <CheckIcon className="h-4 w-4" />
+                                  <>
+                                    <CheckIcon className="h-4 w-4 text-green-600 mr-2" /> Save
+                                  </>
                                 )}
                               </Button>
                               <Button
@@ -169,7 +190,7 @@ export function DaySection({
                                 onClick={onCancelEdit}
                                 disabled={loadingStates.editingId === exercise.id}
                               >
-                                <X className="h-4 w-4" />
+                                <X className="h-4 w-4 text-red-600" />
                               </Button>
                             </div>
                           </div>
@@ -208,32 +229,56 @@ export function DaySection({
                 ref={nameInputRef}
                 placeholder="Biceps curl"
                 value={newExercise.name}
-                onChange={(e) => onNewExerciseChange('name', e.target.value)}
+                onChange={e => onNewExerciseChange('name', e.target.value)}
                 className="w-full bg-transparent border-muted"
               />
-              <div className="flex items-center gap-3">
-                <Input
-                  placeholder="3×10"
-                  value={newExercise.sets}
-                  onChange={(e) => onNewExerciseChange('sets', e.target.value)}
-                  className="flex-1 bg-transparent border-muted"
-                />
-                <Input
-                  placeholder="15kg"
-                  type="number"
-                  value={newExercise.weight}
-                  onChange={(e) => onNewExerciseChange('weight', e.target.value)}
-                  className="flex-1 bg-transparent border-muted"
-                />
-                <div className="flex gap-1">
+              {newExercise.sets.map((set, idx) => (
+                <div className="flex items-center gap-3 mb-2" key={idx}>
+                  <Input
+                    placeholder="1x10"
+                    value={set.reps}
+                    onChange={e => onNewExerciseSetChange(idx, 'reps', e.target.value)}
+                    className="flex-1 bg-transparent border-muted"
+                  />
+                  <Input
+                    placeholder="15kg"
+                    type="number"
+                    value={set.weight}
+                    onChange={e => onNewExerciseSetChange(idx, 'weight', e.target.value)}
+                    className="flex-1 bg-transparent border-muted"
+                  />
                   <Button
+                    variant="ghost"
+                    onClick={() => onRemoveNewExerciseSet(idx)}
+                    disabled={newExercise.sets.length === 1}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 mt-2 justify-between">
+                <Button
+                  variant="secondary"
+                  className="flex-initial"
+                  onClick={onAddNewExerciseSet}
+                >
+                  Add Set
+                </Button>
+                <div className="flex gap-1 ml-auto">
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => onAddExercise(dayWorkout.id)}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={loadingStates.adding}
                   >
                     {loadingStates.adding ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : "Add"}
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                      <Plus className="h-4 w-4 text-green-600 mr-2" />
+                      Add exercise
+                      </>
+                    )}
                   </Button>
                   <Button
                     variant="ghost"

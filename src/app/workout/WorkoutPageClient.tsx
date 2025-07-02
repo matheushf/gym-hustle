@@ -14,6 +14,8 @@ import {
   createWorkout,
   getWorkoutWithDays,
   updateWorkoutTitle,
+  createExerciseSet,
+  deleteExerciseSet,
 } from "@/app/actions/workout";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -21,24 +23,13 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { CheckIcon, X, Edit, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useRouter } from 'next/navigation';
+import { EditingExercise, NewExercise } from "@/app/workout/types";
 
 interface WorkoutPageClientProps {
   workoutId: string;
   initialWorkoutTitle: string;
   initialWorkoutDays: WorkoutDay[];
-}
-
-interface EditingExercise {
-  id: string;
-  name: string;
-  sets: string;
-  weight: string;
-}
-
-interface NewExercise {
-  name: string;
-  sets: string;
-  weight: string;
 }
 
 const DAYS_OF_WEEK = [
@@ -52,13 +43,13 @@ const DAYS_OF_WEEK = [
 ];
 
 export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorkoutDays }: WorkoutPageClientProps) {
+  const router = useRouter();
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>(initialWorkoutDays);
   const [editingExercise, setEditingExercise] = useState<EditingExercise | null>(null);
   const [isAddingExercise, setIsAddingExercise] = useState<string | null>(null);
   const [newExercise, setNewExercise] = useState<NewExercise>({
     name: "",
-    sets: "",
-    weight: "",
+    sets: [{ reps: "", weight: "" }],
   });
   const [loadingStates, setLoadingStates] = useState({
     adding: false,
@@ -104,38 +95,59 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   async function handleUpdateExercise() {
     if (!editingExercise) return;
-
     setLoadingStates(prev => ({ ...prev, editingId: editingExercise.id }));
+    // Save previous state for rollback
+    const prevWorkoutDays = [...workoutDays];
     try {
-      const weight = editingExercise.weight
-        ? parseFloat(editingExercise.weight)
-        : undefined;
-
-      await updateExercise(editingExercise.id, {
-        name: editingExercise.name,
-        sets: editingExercise.sets,
-        weight,
-      });
-
-      setEditingExercise(null);
-      
-      // Optimistically update the UI
+      // 1. Update exercise name
+      await updateExercise(editingExercise.id, { name: editingExercise.name });
+      // 2. Fetch current sets from backend (to compare for deletes)
+      const currentSets = workoutDays.flatMap(day => day.exercises)
+        .find(ex => ex.id === editingExercise.id)?.sets || [];
+      const currentSetIds = currentSets.map(set => set.id);
+      const editedSetIds = editingExercise.sets.filter(set => set.id).map(set => set.id);
+      // 3. Delete removed sets
+      for (const setId of currentSetIds) {
+        if (!editedSetIds.includes(setId)) {
+          await deleteExerciseSet(setId);
+        }
+      }
+      // 4. Update or create sets
+      const updatedSets: import("@/app/actions/workout").ExerciseSet[] = [];
+      for (let i = 0; i < editingExercise.sets.length; i++) {
+        const set = editingExercise.sets[i];
+        if (set.id) {
+          // For optimistic update, reuse the old set object with updated values, but ensure required fields
+          const prevSet = currentSets.find(s => s.id === set.id);
+          if (prevSet) {
+            updatedSets.push({
+              ...prevSet,
+              reps: set.reps,
+              weight: set.weight ? parseFloat(set.weight) : undefined,
+              set_number: i + 1,
+            });
+          }
+        } else {
+          const createdSet = await createExerciseSet(editingExercise.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+          updatedSets.push(createdSet);
+        }
+      }
+      // Optimistically update UI
       setWorkoutDays(prev => prev.map(day => ({
         ...day,
-        exercises: day.exercises.map(ex => 
-          ex.id === editingExercise.id 
-            ? { 
-                ...ex, 
-                name: editingExercise.name,
-                sets: editingExercise.sets,
-                weight: weight,
-              }
+        exercises: day.exercises.map(ex =>
+          ex.id === editingExercise.id
+            ? { ...ex, name: editingExercise.name, sets: updatedSets }
             : ex
-        )
+        ),
       })));
-      
+      setEditingExercise(null);
       toast.success("Exercise updated successfully");
+      // Background refetch
+      setTimeout(() => router.refresh(), 0);
     } catch {
+      // Rollback on error
+      setWorkoutDays(prevWorkoutDays);
       toast.error("Failed to update exercise");
     } finally {
       setLoadingStates(prev => ({ ...prev, editingId: null }));
@@ -147,6 +159,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     existingDayId?: string
   ) {
     try {
+      console.log('oi-- handleAddExerciseClick', dayName, existingDayId)
       if (!existingDayId) {
         const newDay = await createWorkoutDay(dayName, workoutId);
         setWorkoutDays((prev) => [...prev, newDay]);
@@ -161,33 +174,44 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   async function handleAddExercise(dayId: string) {
     setLoadingStates(prev => ({ ...prev, adding: true }));
+    console.log('oi-- handleAddExercise', dayId)
     try {
-      if (!newExercise.name || !newExercise.sets) {
-        toast.error("Please fill in exercise name and sets");
+      if (!newExercise.name || newExercise.sets.some(set => !set.reps)) {
+        toast.error("Please fill in exercise name and all sets");
         return;
       }
-
-      const weight = newExercise.weight
-        ? parseFloat(newExercise.weight)
-        : undefined;
-
-      const newExerciseData = await createExercise(dayId, newExercise.name, newExercise.sets, weight);
-
-      setIsAddingExercise(null);
-      setNewExercise({ name: "", sets: "", weight: "" });
-      
-      // Optimistically update the UI
+      // 1. Create the exercise (no sets/weight)
+      const newExerciseData = await createExercise(dayId, newExercise.name);
+      // 2. Create each set
+      const createdSets: import("@/app/actions/workout").ExerciseSet[] = [];
+      for (let i = 0; i < newExercise.sets.length; i++) {
+        const set = newExercise.sets[i];
+        const createdSet = await createExerciseSet(newExerciseData.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+        createdSets.push(createdSet);
+      }
+      // Optimistically update UI
       setWorkoutDays(prev => prev.map(day => {
         if (day.id === dayId) {
           return {
             ...day,
-            exercises: [...day.exercises, newExerciseData]
+            exercises: [
+              ...day.exercises,
+              {
+                id: newExerciseData.id,
+                name: newExerciseData.name,
+                order: newExerciseData.order,
+                sets: createdSets,
+              },
+            ],
           };
         }
         return day;
       }));
-      
+      setIsAddingExercise(null);
+      setNewExercise({ name: '', sets: [{ reps: '', weight: '' }] });
       toast.success("Exercise added successfully");
+      // Background refetch
+      setTimeout(() => router.refresh(), 0);
     } catch {
       toast.error("Failed to add exercise");
     } finally {
@@ -207,6 +231,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       })));
       
       toast.success("Exercise deleted successfully");
+      router.refresh();
     } catch {
       toast.error("Failed to delete exercise");
     } finally {
@@ -222,14 +247,17 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     setEditingExercise({
       id: exercise.id,
       name: exercise.name,
-      sets: exercise.sets,
-      weight: exercise.weight?.toString() || "",
+      sets: exercise.sets.map(set => ({
+        id: set.id,
+        reps: set.reps,
+        weight: set.weight?.toString() || ""
+      }))
     });
   }
 
   function handleCancelAdd() {
     setIsAddingExercise(null);
-    setNewExercise({ name: "", sets: "", weight: "" });
+    setNewExercise({ name: "", sets: [{ reps: "", weight: "" }], });
   }
 
   async function handleDragEnd(event: DragEndEvent, dayId: string) {
@@ -285,6 +313,26 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     setNewExercise(prev => ({ ...prev, [field]: value }));
   }
 
+  // Add handlers for array-based sets
+  function onNewExerciseSetChange(idx: number, field: 'reps' | 'weight', value: string) {
+    setNewExercise(prev => ({
+      ...prev,
+      sets: prev.sets.map((set, i) => i === idx ? { ...set, [field]: value } : set),
+    }));
+  }
+  function onAddNewExerciseSet() {
+    setNewExercise(prev => ({
+      ...prev,
+      sets: [...prev.sets, { reps: '', weight: '' }],
+    }));
+  }
+  function onRemoveNewExerciseSet(idx: number) {
+    setNewExercise(prev => ({
+      ...prev,
+      sets: prev.sets.length > 1 ? prev.sets.filter((_, i) => i !== idx) : prev.sets,
+    }));
+  }
+
   // Handler to open the move-to-day modal
   function handleRequestMoveExercise(exercise: Exercise, fromDayId: string) {
     setMoveExercise({ exercise, fromDayId });
@@ -325,6 +373,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       // Update backend: change workout_day_id and order
       await updateExercise(exercise.id, { workout_day_id: toDayId, order: workoutDays.find(d => d.id === toDayId)?.exercises.length || 0 });
       toast.success("Exercise moved successfully");
+      router.refresh();
     } catch {
       toast.error("Failed to move exercise");
     }
@@ -338,6 +387,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     try {
       await archiveExercise(exerciseId);
       toast.success("Exercise archived");
+      router.refresh();
     } catch {
       toast.error("Failed to archive exercise");
     }
@@ -376,6 +426,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       setWorkoutDays(newWorkout.days);
       setIsCreatingNew(false);
       toast.success("New workout created");
+      router.refresh();
     } catch {
       toast.error("Failed to create workout");
     } finally {
@@ -395,6 +446,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       setWorkoutTitle(tempTitle.trim());
       setEditingTitle(false);
       toast.success("Workout title updated");
+      router.refresh();
     } catch {
       toast.error("Failed to update title");
     } finally {
@@ -402,99 +454,124 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     }
   }
 
+  function onEditingExerciseSetChange(idx: number, field: 'reps' | 'weight', value: string) {
+    setEditingExercise(prev => prev ? {
+      ...prev,
+      sets: prev.sets.map((set, i) => i === idx ? { ...set, [field]: value } : set),
+    } : null);
+  }
+
+  function onAddEditingExerciseSet() {
+    setEditingExercise(prev => prev ? {
+      ...prev,
+      sets: [...prev.sets, { reps: '', weight: '' }],
+    } : null);
+  }
+
+  function onRemoveEditingExerciseSet(idx: number) {
+    setEditingExercise(prev => prev ? {
+      ...prev,
+      sets: prev.sets.length > 1 ? prev.sets.filter((_, i) => i !== idx) : prev.sets,
+    } : null);
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl">
-      {/* Title and New Workout Button Row */}
-      <div className="flex items-center justify-between mb-6 w-full">
-        <div className="flex-1 min-w-0">
-          {/* Workout Title and Confirm/Discard for new workout */}
-          {isCreatingNew ? (
-            <div className="flex flex-1 flex-row items-center justify-center gap-2 w-full">
+      <div className="flex-1 min-w-0 mb-4">
+        {/* Workout Title and Confirm/Discard for new workout */}
+        {isCreatingNew ? (
+          <div className="flex flex-1 flex-row items-center justify-center gap-2 w-full">
+            <Input
+              value={newWorkoutTitle}
+              onChange={e => setNewWorkoutTitle(e.target.value)}
+              autoFocus
+              disabled={loadingStates.savingTitle}
+            />
+            <div className="flex gap-2">
+              <Button
+                aria-label="Confirm new workout"
+                variant="outline"
+                onClick={handleConfirmNewWorkout}
+                disabled={loadingStates.savingTitle}
+              >
+                <CheckIcon className="w-4 h-4 inline text-green-600 mr-2" /> Create
+              </Button>
+              <Button
+                aria-label="Discard new workout"
+                variant="outline"
+                onClick={handleDiscardNewWorkout}
+                disabled={loadingStates.savingTitle}
+              >
+                <X className="w-4 h-4 inline text-red-600" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          editingTitle ? (
+            <div className="flex flex-row flex-1 items-center justify-between gap-2 w-full">
               <Input
-                value={newWorkoutTitle}
-                onChange={e => setNewWorkoutTitle(e.target.value)}
+                value={tempTitle}
+                onChange={e => setTempTitle(e.target.value)}
                 autoFocus
+                onKeyDown={async e => {
+                  if (e.key === 'Enter') {
+                    await handleSaveTitle();
+                  } else if (e.key === 'Escape') {
+                    setTempTitle(workoutTitle);
+                    setEditingTitle(false);
+                  }
+                }}
                 disabled={loadingStates.savingTitle}
               />
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
-                  aria-label="Confirm new workout"
-                  variant="outline"
-                  onClick={handleConfirmNewWorkout}
-                  disabled={loadingStates.savingTitle}
-                >
-                  <CheckIcon className="w-5 h-5 inline text-green-600 mr-2" /> Save Workout
-                </Button>
-                <Button
-                  aria-label="Discard new workout"
-                  variant="outline"
-                  onClick={handleDiscardNewWorkout}
-                  disabled={loadingStates.savingTitle}
-                >
-                  <X className="w-5 h-5 inline text-red-600 mr-2" /> Discard
-                </Button>
-              </div>
-            </div>
-          ) : (
-            editingTitle ? (
-              <div className="flex items-center gap-2 w-full max-w-xs">
-                <input
-                  className="border rounded px-2 py-1 flex-1 text-lg font-bold text-left"
-                  value={tempTitle}
-                  onChange={e => setTempTitle(e.target.value)}
-                  autoFocus
-                  onKeyDown={async e => {
-                    if (e.key === 'Enter') {
-                      await handleSaveTitle();
-                    } else if (e.key === 'Escape') {
-                      setTempTitle(workoutTitle);
-                      setEditingTitle(false);
-                    }
-                  }}
-                  disabled={loadingStates.savingTitle}
-                />
-                <button
                   aria-label="Save title"
-                  className="text-green-600 hover:text-green-800"
+                  variant="outline"
+                  className="text-green-600"
                   onClick={handleSaveTitle}
                   disabled={loadingStates.savingTitle}
                 >
-                  <CheckIcon className="w-5 h-5" />
-                </button>
-                <button
+                  <CheckIcon className="w-4 h-4" />
+                </Button>
+                <Button
                   aria-label="Cancel edit"
-                  className="text-red-600 hover:text-red-800"
+                  variant="outline"
+                  className="text-red-600"
                   onClick={() => {
                     setTempTitle(workoutTitle);
                     setEditingTitle(false);
                   }}
                   disabled={loadingStates.savingTitle}
                 >
-                  <X className="w-5 h-5" />
-                </button>
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
-            ) : (
-              <h1
-                className="text-2xl font-bold text-left flex items-center gap-2 cursor-pointer"
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <h3
+                className="text-1xl font-bold text-left flex items-center gap-2 cursor-pointer"
                 onClick={() => setEditingTitle(true)}
                 title="Click to edit title"
               >
                 {workoutTitle}
-                <Edit className="inline w-4 h-4 text-muted-foreground hover:text-primary self-center mt-1" />
-              </h1>
-            )
-          )}
-        </div>
-        {/* New Workout Button */}
-        {!isCreatingNew && (
-          <Button
-            variant="outline"
-            className="ml-4"
-            onClick={handleStartNewWorkout}
-          >
-            <PlusIcon className="w-4 h-4 mr-2" />
-            New Workout
-          </Button>
+              </h3>
+              {!isCreatingNew && (
+                <div className="flex items-center justify-center">
+                  <Button variant="outline" className="flex-initial mr-2" onClick={() => setEditingTitle(true)}>
+                    <Edit className="inline w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-initial"
+                    onClick={handleStartNewWorkout}
+                    >
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
         )}
       </div>
       <main className="space-y-4">
@@ -527,6 +604,12 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
                 onArchiveExercise={handleArchiveExercise}
                 isCurrentDay={isCurrentDay}
                 isCreatingNew={isCreatingNew}
+                onNewExerciseSetChange={onNewExerciseSetChange}
+                onAddNewExerciseSet={onAddNewExerciseSet}
+                onRemoveNewExerciseSet={onRemoveNewExerciseSet}
+                onEditingExerciseSetChange={onEditingExerciseSetChange}
+                onAddEditingExerciseSet={onAddEditingExerciseSet}
+                onRemoveEditingExerciseSet={onRemoveEditingExerciseSet}
               />
             </div>
           );
@@ -575,6 +658,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
                     try {
                       await archiveExercise(moveExercise.exercise.id);
                       toast.success("Exercise archived");
+                      router.refresh();
                     } catch {
                       toast.error("Failed to archive exercise");
                     }
