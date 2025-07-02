@@ -16,7 +16,6 @@ import {
   updateWorkoutTitle,
   createExerciseSet,
   deleteExerciseSet,
-  updateExerciseSet,
 } from "@/app/actions/workout";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -24,6 +23,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { CheckIcon, X, Edit, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useRouter } from 'next/navigation';
 
 interface WorkoutPageClientProps {
   workoutId: string;
@@ -64,6 +64,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorkoutDays }: WorkoutPageClientProps) {
+  const router = useRouter();
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>(initialWorkoutDays);
   const [editingExercise, setEditingExercise] = useState<EditingExercise | null>(null);
   const [isAddingExercise, setIsAddingExercise] = useState<string | null>(null);
@@ -116,6 +117,8 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
   async function handleUpdateExercise() {
     if (!editingExercise) return;
     setLoadingStates(prev => ({ ...prev, editingId: editingExercise.id }));
+    // Save previous state for rollback
+    const prevWorkoutDays = [...workoutDays];
     try {
       // 1. Update exercise name
       await updateExercise(editingExercise.id, { name: editingExercise.name });
@@ -131,21 +134,41 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
         }
       }
       // 4. Update or create sets
+      const updatedSets: import("@/app/actions/workout").ExerciseSet[] = [];
       for (let i = 0; i < editingExercise.sets.length; i++) {
         const set = editingExercise.sets[i];
         if (set.id) {
-          await updateExerciseSet(set.id, {
-            reps: set.reps,
-            weight: set.weight ? parseFloat(set.weight) : undefined,
-            set_number: i + 1,
-          });
+          // For optimistic update, reuse the old set object with updated values, but ensure required fields
+          const prevSet = currentSets.find(s => s.id === set.id);
+          if (prevSet) {
+            updatedSets.push({
+              ...prevSet,
+              reps: set.reps,
+              weight: set.weight ? parseFloat(set.weight) : undefined,
+              set_number: i + 1,
+            });
+          }
         } else {
-          await createExerciseSet(editingExercise.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+          const createdSet = await createExerciseSet(editingExercise.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+          updatedSets.push(createdSet);
         }
       }
+      // Optimistically update UI
+      setWorkoutDays(prev => prev.map(day => ({
+        ...day,
+        exercises: day.exercises.map(ex =>
+          ex.id === editingExercise.id
+            ? { ...ex, name: editingExercise.name, sets: updatedSets }
+            : ex
+        ),
+      })));
       setEditingExercise(null);
       toast.success("Exercise updated successfully");
+      // Background refetch
+      setTimeout(() => router.refresh(), 0);
     } catch {
+      // Rollback on error
+      setWorkoutDays(prevWorkoutDays);
       toast.error("Failed to update exercise");
     } finally {
       setLoadingStates(prev => ({ ...prev, editingId: null }));
@@ -157,6 +180,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     existingDayId?: string
   ) {
     try {
+      console.log('oi-- handleAddExerciseClick', dayName, existingDayId)
       if (!existingDayId) {
         const newDay = await createWorkoutDay(dayName, workoutId);
         setWorkoutDays((prev) => [...prev, newDay]);
@@ -171,6 +195,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   async function handleAddExercise(dayId: string) {
     setLoadingStates(prev => ({ ...prev, adding: true }));
+    console.log('oi-- handleAddExercise', dayId)
     try {
       if (!newExercise.name || newExercise.sets.some(set => !set.reps)) {
         toast.error("Please fill in exercise name and all sets");
@@ -179,13 +204,35 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       // 1. Create the exercise (no sets/weight)
       const newExerciseData = await createExercise(dayId, newExercise.name);
       // 2. Create each set
+      const createdSets: import("@/app/actions/workout").ExerciseSet[] = [];
       for (let i = 0; i < newExercise.sets.length; i++) {
         const set = newExercise.sets[i];
-        await createExerciseSet(newExerciseData.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+        const createdSet = await createExerciseSet(newExerciseData.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+        createdSets.push(createdSet);
       }
+      // Optimistically update UI
+      setWorkoutDays(prev => prev.map(day => {
+        if (day.id === dayId) {
+          return {
+            ...day,
+            exercises: [
+              ...day.exercises,
+              {
+                id: newExerciseData.id,
+                name: newExerciseData.name,
+                order: newExerciseData.order,
+                sets: createdSets,
+              },
+            ],
+          };
+        }
+        return day;
+      }));
       setIsAddingExercise(null);
       setNewExercise({ name: '', sets: [{ reps: '', weight: '' }] });
       toast.success("Exercise added successfully");
+      // Background refetch
+      setTimeout(() => router.refresh(), 0);
     } catch {
       toast.error("Failed to add exercise");
     } finally {
@@ -205,6 +252,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       })));
       
       toast.success("Exercise deleted successfully");
+      router.refresh();
     } catch {
       toast.error("Failed to delete exercise");
     } finally {
@@ -346,6 +394,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       // Update backend: change workout_day_id and order
       await updateExercise(exercise.id, { workout_day_id: toDayId, order: workoutDays.find(d => d.id === toDayId)?.exercises.length || 0 });
       toast.success("Exercise moved successfully");
+      router.refresh();
     } catch {
       toast.error("Failed to move exercise");
     }
@@ -359,6 +408,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     try {
       await archiveExercise(exerciseId);
       toast.success("Exercise archived");
+      router.refresh();
     } catch {
       toast.error("Failed to archive exercise");
     }
@@ -397,6 +447,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       setWorkoutDays(newWorkout.days);
       setIsCreatingNew(false);
       toast.success("New workout created");
+      router.refresh();
     } catch {
       toast.error("Failed to create workout");
     } finally {
@@ -416,6 +467,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       setWorkoutTitle(tempTitle.trim());
       setEditingTitle(false);
       toast.success("Workout title updated");
+      router.refresh();
     } catch {
       toast.error("Failed to update title");
     } finally {
@@ -623,6 +675,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
                     try {
                       await archiveExercise(moveExercise.exercise.id);
                       toast.success("Exercise archived");
+                      router.refresh();
                     } catch {
                       toast.error("Failed to archive exercise");
                     }

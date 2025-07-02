@@ -270,7 +270,7 @@ export function DaySection({
               ))}
               <div className="flex items-center gap-2 mt-2 justify-between">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   className="flex-initial"
                   onClick={onAddNewExerciseSet}
                 >
@@ -279,13 +279,18 @@ export function DaySection({
                 <div className="flex gap-1 ml-auto">
                   <Button
                     size="sm"
-                    variant="ghost"
-                    onClick={onUpdateExercise}
+                    variant="outline"
+                    onClick={() => onAddExercise(dayWorkout.id)}
                     disabled={loadingStates.adding}
                   >
                     {loadingStates.adding ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : "Add"}
+                    ) : (
+                      <>
+                      <Plus className="h-4 w-4 text-green-600 mr-2" />
+                      Add exercise
+                      </>
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
