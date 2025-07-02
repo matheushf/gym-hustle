@@ -16,6 +16,7 @@ import {
   updateWorkoutTitle,
   createExerciseSet,
   deleteExerciseSet,
+  updateExerciseSet,
 } from "@/app/actions/workout";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -117,6 +118,12 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
       for (let i = 0; i < editingExercise.sets.length; i++) {
         const set = editingExercise.sets[i];
         if (set.id) {
+          // Update the set in the database
+          await updateExerciseSet(set.id, {
+            reps: set.reps,
+            weight: set.weight ? parseFloat(set.weight) : undefined,
+            set_number: i + 1,
+          });
           // For optimistic update, reuse the old set object with updated values, but ensure required fields
           const prevSet = currentSets.find(s => s.id === set.id);
           if (prevSet) {
