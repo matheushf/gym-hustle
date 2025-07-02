@@ -99,6 +99,13 @@ export function MobileMenu({ userName }: { userName: string }) {
               Workout
             </Link>
             <Link
+              href="/saved-workouts"
+              className={linkClass("/saved-workouts")}
+              onClick={() => setMenuOpen(false)}
+            >
+              Saved Workouts
+            </Link>
+            <Link
               href="/cycles"
               className={linkClass("/cycles")}
               onClick={() => setMenuOpen(false)}
@@ -150,6 +157,9 @@ export function MobileMenu({ userName }: { userName: string }) {
         <span className="text-sm text-muted-foreground mb-2">{userName}</span>
         <Link href="/workout" className={linkClass("/workout")}>
           Workout
+        </Link>
+        <Link href="/saved-workouts" className={linkClass("/saved-workouts")}>
+          Saved Workouts
         </Link>
         <Link href="/cycles" className={linkClass("/cycles")}>
           Cycles

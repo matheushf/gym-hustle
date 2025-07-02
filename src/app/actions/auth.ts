@@ -81,4 +81,18 @@ export async function getCurrentUser() {
   }
 
   return session.user;
+}
+
+export async function getSelectedWorkoutId() {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  const { data, error } = await supabase
+    .from("user_profile")
+    .select("selected_workout_id")
+    .eq("user_id", session.user.id)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error; // ignore no row found
+  return data?.selected_workout_id || null;
 } 
