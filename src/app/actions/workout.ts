@@ -5,12 +5,19 @@ import { revalidatePath } from "next/cache";
 import type { Session } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+export interface ExerciseSet {
+  id: string;
+  exercise_id: string;
+  set_number: number;
+  reps: string;
+  weight?: number;
+}
+
 export interface Exercise {
   id: string;
   name: string;
-  sets: string;
-  weight?: number;
   order: number;
+  sets: ExerciseSet[];
 }
 
 export interface WorkoutDay {
@@ -111,29 +118,74 @@ export async function createWorkoutDay(name: string, workoutId: string) {
 export async function createExercise(
   workoutDayId: string,
   name: string,
-  sets: string,
-  weight?: number
+  order: number = 0
 ) {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
-
   const { data, error } = await supabase
     .from("exercises")
     .insert([
       {
         name,
-        sets,
-        weight,
         workout_day_id: workoutDayId,
+        order,
       },
     ])
     .select()
     .single();
-
   if (error) throw error;
-
   revalidatePath("/workout");
   return data;
+}
+
+export async function createExerciseSet(
+  exerciseId: string,
+  set_number: number,
+  reps: string,
+  weight?: number
+) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data, error } = await supabase
+    .from("exercise_sets")
+    .insert([
+      {
+        exercise_id: exerciseId,
+        set_number,
+        reps,
+        weight,
+      },
+    ])
+    .select()
+    .single();
+  if (error) throw error;
+  revalidatePath("/workout");
+  return data;
+}
+
+export async function updateExerciseSet(
+  setId: string,
+  data: { reps?: string; weight?: number; set_number?: number }
+) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { error } = await supabase
+    .from("exercise_sets")
+    .update(data)
+    .eq("id", setId);
+  if (error) throw error;
+  revalidatePath("/workout");
+}
+
+export async function deleteExerciseSet(setId: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { error } = await supabase
+    .from("exercise_sets")
+    .delete()
+    .eq("id", setId);
+  if (error) throw error;
+  revalidatePath("/workout");
 }
 
 export async function updateExercise(
@@ -248,11 +300,10 @@ export async function unarchiveExercise(exerciseId: string) {
   revalidatePath("/workout");
 }
 
-// Fetch a workout (with days and exercises) by workout_id
+// Fetch a workout (with days, exercises, and sets)
 export async function getWorkoutWithDays(workoutId: string) {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
-
   // Fetch workout
   const { data: workout, error: workoutError } = await supabase
     .from("workouts")
@@ -261,33 +312,44 @@ export async function getWorkoutWithDays(workoutId: string) {
     .single();
   if (workoutError || !workout)
     throw workoutError || new Error("Workout not found");
-
   // Fetch days and exercises
   const { data: days, error: daysError } = await supabase
     .from("workout_days")
     .select(
-      `
-      id,
-      name,
-      exercises (
-        id,
-        name,
-        sets,
-        weight,
-        order
-      )
-    `
+      `id, name, exercises (id, name, order)`
     )
     .eq("workout_id", workoutId)
     .eq("exercises.archived", false)
     .order("created_at");
   if (daysError) throw daysError;
-  if (days) {
-    days.forEach((day) => {
-      day.exercises.sort((a, b) => a.order - b.order);
-    });
+  // Fetch sets for all exercises
+  type DBExercise = { id: string; name: string; order: number; sets?: ExerciseSet[] };
+  type DBDay = { id: string; name: string; exercises: DBExercise[] };
+  const dbDays = days as DBDay[];
+  const exerciseIds = dbDays.flatMap((day) => day.exercises.map((ex) => ex.id));
+  let setsByExercise: Record<string, ExerciseSet[]> = {};
+  if (exerciseIds.length > 0) {
+    const { data: setsData, error: setsError } = await supabase
+      .from("exercise_sets")
+      .select("id, exercise_id, set_number, reps, weight")
+      .in("exercise_id", exerciseIds);
+    if (setsError) throw setsError;
+    setsByExercise = (setsData || []).reduce((acc: Record<string, ExerciseSet[]>, set: ExerciseSet) => {
+      if (!acc[set.exercise_id]) acc[set.exercise_id] = [];
+      acc[set.exercise_id].push(set);
+      return acc;
+    }, {});
   }
-  return { ...workout, days: days || [] } as Workout;
+  // Attach sets to each exercise
+  dbDays.forEach((day) => {
+    day.exercises.forEach((ex) => {
+      ex.sets = (setsByExercise[ex.id] || []).sort((a, b) => a.set_number - b.set_number);
+    });
+    day.exercises.sort((a, b) => a.order - b.order);
+  });
+  // Cast to WorkoutDay[] with Exercise[]
+  const typedDays: WorkoutDay[] = dbDays as unknown as WorkoutDay[];
+  return { ...workout, days: typedDays || [] } as Workout;
 }
 
 // Create a workout for the current user

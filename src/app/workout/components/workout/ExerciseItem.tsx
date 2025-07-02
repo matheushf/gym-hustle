@@ -74,11 +74,17 @@ export function ExerciseItem({ exercise, onEdit, onDelete, isDeleting, onRequest
         </div>
         
         <div className="flex items-center pl-12">
-          <div className="flex-1 flex items-center gap-4">
-            <span className="text-muted-foreground">{exercise.sets}</span>
-            <span className="text-muted-foreground">
-              {exercise.weight ? `${exercise.weight}kg` : "-"}
-            </span>
+          <div className="flex-1 flex flex-col gap-1 mt-2">
+            {exercise.sets && exercise.sets.length > 0 ? (
+              exercise.sets.map((set) => (
+                <div key={set.id} className="flex gap-8 text-muted-foreground pl-2">
+                  <span>{set.reps}</span>
+                  <span>{set.weight !== undefined && set.weight !== null ? `${set.weight}kg` : '-'}</span>
+                </div>
+              ))
+            ) : (
+              <span className="text-muted-foreground">-</span>
+            )}
           </div>
           <div className="flex gap-1">
             <Button

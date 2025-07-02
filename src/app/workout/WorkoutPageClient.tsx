@@ -14,6 +14,9 @@ import {
   createWorkout,
   getWorkoutWithDays,
   updateWorkoutTitle,
+  createExerciseSet,
+  deleteExerciseSet,
+  updateExerciseSet,
 } from "@/app/actions/workout";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -28,17 +31,26 @@ interface WorkoutPageClientProps {
   initialWorkoutDays: WorkoutDay[];
 }
 
+interface EditingExerciseSet {
+  id?: string;
+  reps: string;
+  weight: string;
+}
+
 interface EditingExercise {
   id: string;
   name: string;
-  sets: string;
+  sets: EditingExerciseSet[];
+}
+
+interface NewExerciseSet {
+  reps: string;
   weight: string;
 }
 
 interface NewExercise {
   name: string;
-  sets: string;
-  weight: string;
+  sets: NewExerciseSet[];
 }
 
 const DAYS_OF_WEEK = [
@@ -57,8 +69,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
   const [isAddingExercise, setIsAddingExercise] = useState<string | null>(null);
   const [newExercise, setNewExercise] = useState<NewExercise>({
     name: "",
-    sets: "",
-    weight: "",
+    sets: [{ reps: "", weight: "" }],
   });
   const [loadingStates, setLoadingStates] = useState({
     adding: false,
@@ -104,36 +115,35 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   async function handleUpdateExercise() {
     if (!editingExercise) return;
-
     setLoadingStates(prev => ({ ...prev, editingId: editingExercise.id }));
     try {
-      const weight = editingExercise.weight
-        ? parseFloat(editingExercise.weight)
-        : undefined;
-
-      await updateExercise(editingExercise.id, {
-        name: editingExercise.name,
-        sets: editingExercise.sets,
-        weight,
-      });
-
+      // 1. Update exercise name
+      await updateExercise(editingExercise.id, { name: editingExercise.name });
+      // 2. Fetch current sets from backend (to compare for deletes)
+      const currentSets = workoutDays.flatMap(day => day.exercises)
+        .find(ex => ex.id === editingExercise.id)?.sets || [];
+      const currentSetIds = currentSets.map(set => set.id);
+      const editedSetIds = editingExercise.sets.filter(set => set.id).map(set => set.id);
+      // 3. Delete removed sets
+      for (const setId of currentSetIds) {
+        if (!editedSetIds.includes(setId)) {
+          await deleteExerciseSet(setId);
+        }
+      }
+      // 4. Update or create sets
+      for (let i = 0; i < editingExercise.sets.length; i++) {
+        const set = editingExercise.sets[i];
+        if (set.id) {
+          await updateExerciseSet(set.id, {
+            reps: set.reps,
+            weight: set.weight ? parseFloat(set.weight) : undefined,
+            set_number: i + 1,
+          });
+        } else {
+          await createExerciseSet(editingExercise.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+        }
+      }
       setEditingExercise(null);
-      
-      // Optimistically update the UI
-      setWorkoutDays(prev => prev.map(day => ({
-        ...day,
-        exercises: day.exercises.map(ex => 
-          ex.id === editingExercise.id 
-            ? { 
-                ...ex, 
-                name: editingExercise.name,
-                sets: editingExercise.sets,
-                weight: weight,
-              }
-            : ex
-        )
-      })));
-      
       toast.success("Exercise updated successfully");
     } catch {
       toast.error("Failed to update exercise");
@@ -162,31 +172,19 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
   async function handleAddExercise(dayId: string) {
     setLoadingStates(prev => ({ ...prev, adding: true }));
     try {
-      if (!newExercise.name || !newExercise.sets) {
-        toast.error("Please fill in exercise name and sets");
+      if (!newExercise.name || newExercise.sets.some(set => !set.reps)) {
+        toast.error("Please fill in exercise name and all sets");
         return;
       }
-
-      const weight = newExercise.weight
-        ? parseFloat(newExercise.weight)
-        : undefined;
-
-      const newExerciseData = await createExercise(dayId, newExercise.name, newExercise.sets, weight);
-
+      // 1. Create the exercise (no sets/weight)
+      const newExerciseData = await createExercise(dayId, newExercise.name);
+      // 2. Create each set
+      for (let i = 0; i < newExercise.sets.length; i++) {
+        const set = newExercise.sets[i];
+        await createExerciseSet(newExerciseData.id, i + 1, set.reps, set.weight ? parseFloat(set.weight) : undefined);
+      }
       setIsAddingExercise(null);
-      setNewExercise({ name: "", sets: "", weight: "" });
-      
-      // Optimistically update the UI
-      setWorkoutDays(prev => prev.map(day => {
-        if (day.id === dayId) {
-          return {
-            ...day,
-            exercises: [...day.exercises, newExerciseData]
-          };
-        }
-        return day;
-      }));
-      
+      setNewExercise({ name: '', sets: [{ reps: '', weight: '' }] });
       toast.success("Exercise added successfully");
     } catch {
       toast.error("Failed to add exercise");
@@ -222,14 +220,17 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     setEditingExercise({
       id: exercise.id,
       name: exercise.name,
-      sets: exercise.sets,
-      weight: exercise.weight?.toString() || "",
+      sets: exercise.sets.map(set => ({
+        id: set.id,
+        reps: set.reps,
+        weight: set.weight?.toString() || ""
+      }))
     });
   }
 
   function handleCancelAdd() {
     setIsAddingExercise(null);
-    setNewExercise({ name: "", sets: "", weight: "" });
+    setNewExercise({ name: "", sets: [{ reps: "", weight: "" }], });
   }
 
   async function handleDragEnd(event: DragEndEvent, dayId: string) {
@@ -283,6 +284,26 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   function handleNewExerciseChange(field: keyof NewExercise, value: string) {
     setNewExercise(prev => ({ ...prev, [field]: value }));
+  }
+
+  // Add handlers for array-based sets
+  function onNewExerciseSetChange(idx: number, field: 'reps' | 'weight', value: string) {
+    setNewExercise(prev => ({
+      ...prev,
+      sets: prev.sets.map((set, i) => i === idx ? { ...set, [field]: value } : set),
+    }));
+  }
+  function onAddNewExerciseSet() {
+    setNewExercise(prev => ({
+      ...prev,
+      sets: [...prev.sets, { reps: '', weight: '' }],
+    }));
+  }
+  function onRemoveNewExerciseSet(idx: number) {
+    setNewExercise(prev => ({
+      ...prev,
+      sets: prev.sets.length > 1 ? prev.sets.filter((_, i) => i !== idx) : prev.sets,
+    }));
   }
 
   // Handler to open the move-to-day modal
@@ -400,6 +421,27 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
     } finally {
       setLoadingStates(prev => ({ ...prev, savingTitle: false }));
     }
+  }
+
+  function onEditingExerciseSetChange(idx: number, field: 'reps' | 'weight', value: string) {
+    setEditingExercise(prev => prev ? {
+      ...prev,
+      sets: prev.sets.map((set, i) => i === idx ? { ...set, [field]: value } : set),
+    } : null);
+  }
+
+  function onAddEditingExerciseSet() {
+    setEditingExercise(prev => prev ? {
+      ...prev,
+      sets: [...prev.sets, { reps: '', weight: '' }],
+    } : null);
+  }
+
+  function onRemoveEditingExerciseSet(idx: number) {
+    setEditingExercise(prev => prev ? {
+      ...prev,
+      sets: prev.sets.length > 1 ? prev.sets.filter((_, i) => i !== idx) : prev.sets,
+    } : null);
   }
 
   return (
@@ -527,6 +569,12 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
                 onArchiveExercise={handleArchiveExercise}
                 isCurrentDay={isCurrentDay}
                 isCreatingNew={isCreatingNew}
+                onNewExerciseSetChange={onNewExerciseSetChange}
+                onAddNewExerciseSet={onAddNewExerciseSet}
+                onRemoveNewExerciseSet={onRemoveNewExerciseSet}
+                onEditingExerciseSetChange={onEditingExerciseSetChange}
+                onAddEditingExerciseSet={onAddEditingExerciseSet}
+                onRemoveEditingExerciseSet={onRemoveEditingExerciseSet}
               />
             </div>
           );
