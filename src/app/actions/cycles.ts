@@ -51,4 +51,31 @@ export async function updateCycle({ id, end }: { id: string; end: Date }) {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function getCurrentCycleId() {
+  const supabase = createClient(cookies());
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  const { data, error } = await supabase
+    .from("cycles")
+    .select("id")
+    .eq("user_id", session.user.id)
+    .is("end_date", null)
+    .order("start_date", { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) return null;
+  return data.id;
+}
+
+export async function getCycleById(cycleId: string) {
+  const supabase = createClient(cookies());
+  const { data, error } = await supabase
+    .from("cycles")
+    .select("id, type, start_date, end_date, created_at")
+    .eq("id", cycleId)
+    .single();
+  if (error || !data) return null;
+  return data;
 } 

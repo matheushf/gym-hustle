@@ -1,35 +1,30 @@
-import { unstable_cache } from "next/cache";
+"use server";
+
 import { MacrosClient } from "./MacrosClient";
-import { getMacroGoals } from "@/app/actions/macros";
-import { cookies } from "next/headers";
-import { getFoodIdeas } from "../actions/ideas";
-import { createClient } from "@/utils/supabase/server";
+import { getFortnightsForCycle } from "@/app/actions/weeks";
+import { getMacrosForWeek } from "@/app/actions/macros";
+import { getIdeasForWeek } from "@/app/actions/ideas";
+import { getCurrentCycleId, getCycleById } from "@/app/actions/cycles";
 
 export default async function Page() {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user?.id || "anonymous";
+  const cycleId = await getCurrentCycleId();
+  if (!cycleId) {
+    return <div className="p-8 text-center">No active cycle found.</div>;
+  }
 
-  const initialMacros = await unstable_cache(
-    async () => await getMacroGoals(cookieStore, session),
-    ["macro-goals", userId],
-    {
-      tags: ["macro-goals"],
-      revalidate: 60,
-    }
-  )();
-
-  const initialIdeas = await unstable_cache(
-    async () => await getFoodIdeas(cookieStore, session),
-    ["food-ideas", userId],
-    {
-      tags: ["food-ideas"],
-      revalidate: 60,
-    }
-  )();
+  const cycle = await getCycleById(cycleId);
+  const fortnights = await getFortnightsForCycle(cycleId);
+  const latestWeekNumber = fortnights.length > 0 ? fortnights[fortnights.length - 1].week_number : 1;
+  const macros = await getMacrosForWeek(cycleId, latestWeekNumber);
+  const ideas = await getIdeasForWeek(cycleId, latestWeekNumber);
 
   return (
-    <MacrosClient initialMacros={initialMacros} initialIdeas={initialIdeas} />
+    <MacrosClient
+      cycleId={cycleId}
+      cycleType={cycle?.type}
+      initialWeeks={fortnights}
+      initialMacros={macros}
+      initialIdeas={ideas}
+    />
   );
 }
