@@ -28,6 +28,15 @@ export interface ArchivedExercise {
   workout_days?: { name?: string };
 }
 
+export interface Workout {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  days: WorkoutDay[];
+}
+
 export async function getWorkoutDays(cookieStore: ReturnType<typeof cookies>, session: Session | null) {
   if (!session) return [];
 
@@ -73,7 +82,7 @@ export async function updateExerciseWeight(exerciseId: string, weight: number) {
   revalidatePath('/workout');
 }
 
-export async function createWorkoutDay(name: string) {
+export async function createWorkoutDay(name: string, workoutId: string) {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
@@ -83,7 +92,7 @@ export async function createWorkoutDay(name: string) {
   const { data, error } = await supabase
     .from('workout_days')
     .insert([
-      { name, user_id: session.user.id }
+      { name, user_id: session.user.id, workout_id: workoutId }
     ])
     .select()
     .single();
@@ -216,5 +225,72 @@ export async function unarchiveExercise(exerciseId: string) {
 
   if (error) throw error;
   revalidatePath('/exercises-archive');
+  revalidatePath('/workout');
+}
+
+// Fetch a workout (with days and exercises) by workout_id
+export async function getWorkoutWithDays(workoutId: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  // Fetch workout
+  const { data: workout, error: workoutError } = await supabase
+    .from('workouts')
+    .select('*')
+    .eq('id', workoutId)
+    .single();
+  if (workoutError || !workout) throw workoutError || new Error('Workout not found');
+
+  // Fetch days and exercises
+  const { data: days, error: daysError } = await supabase
+    .from('workout_days')
+    .select(`
+      id,
+      name,
+      exercises (
+        id,
+        name,
+        sets,
+        weight,
+        order
+      )
+    `)
+    .eq('workout_id', workoutId)
+    .eq('exercises.archived', false)
+    .order('created_at');
+  if (daysError) throw daysError;
+  if (days) {
+    days.forEach(day => {
+      day.exercises.sort((a, b) => a.order - b.order);
+    });
+  }
+  return { ...workout, days: days || [] } as Workout;
+}
+
+// Create a workout for the current user
+export async function createWorkout(name: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+  const { data, error } = await supabase
+    .from('workouts')
+    .insert([{ name, user_id: session.user.id }])
+    .select()
+    .single();
+  if (error) throw error;
+  revalidatePath('/workout');
+  return data;
+}
+
+// Update a workout's title
+export async function updateWorkoutTitle(workoutId: string, name: string) {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { error } = await supabase
+    .from('workouts')
+    .update({ name })
+    .eq('id', workoutId);
+  if (error) throw error;
   revalidatePath('/workout');
 } 

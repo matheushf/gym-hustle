@@ -11,12 +11,16 @@ import {
   type WorkoutDay,
   type Exercise,
   archiveExercise,
+  updateWorkoutTitle,
 } from "@/app/actions/workout";
 import { DaySection } from "@/app/workout/components/workout/DaySection";
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
+import { CheckIcon, X, Edit } from "lucide-react";
 
 interface WorkoutPageClientProps {
+  workoutId: string;
+  initialWorkoutTitle: string;
   initialWorkoutDays: WorkoutDay[];
 }
 
@@ -43,7 +47,7 @@ const DAYS_OF_WEEK = [
   "Sunday",
 ];
 
-export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps) {
+export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorkoutDays }: WorkoutPageClientProps) {
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>(initialWorkoutDays);
   const [editingExercise, setEditingExercise] = useState<EditingExercise | null>(null);
   const [isAddingExercise, setIsAddingExercise] = useState<string | null>(null);
@@ -56,6 +60,7 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
     adding: false,
     editingId: null as string | null,
     deletingId: null as string | null,
+    savingTitle: false,
   });
   const [moveExercise, setMoveExercise] = useState<{
     exercise: Exercise | null;
@@ -63,6 +68,10 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
   } | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [pendingMoveDayId, setPendingMoveDayId] = useState<string | null>(null);
+  // Title state
+  const [workoutTitle, setWorkoutTitle] = useState<string>(initialWorkoutTitle);
+  const [editingTitle, setEditingTitle] = useState<boolean>(false);
+  const [tempTitle, setTempTitle] = useState<string>(initialWorkoutTitle);
 
   // Create refs for each day
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -127,7 +136,7 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
   ) {
     try {
       if (!existingDayId) {
-        const newDay = await createWorkoutDay(dayName);
+        const newDay = await createWorkoutDay(dayName, workoutId);
         setWorkoutDays((prev) => [...prev, newDay]);
         setIsAddingExercise(newDay.id);
       } else {
@@ -322,8 +331,77 @@ export function WorkoutPageClient({ initialWorkoutDays }: WorkoutPageClientProps
     }
   }
 
+  // Save title handler
+  async function handleSaveTitle() {
+    if (tempTitle.trim() === "") {
+      toast.error("Title cannot be empty");
+      return;
+    }
+    setLoadingStates(prev => ({ ...prev, savingTitle: true }));
+    try {
+      await updateWorkoutTitle(workoutId, tempTitle.trim());
+      setWorkoutTitle(tempTitle.trim());
+      setEditingTitle(false);
+      toast.success("Workout title updated");
+    } catch {
+      toast.error("Failed to update title");
+    } finally {
+      setLoadingStates(prev => ({ ...prev, savingTitle: false }));
+    }
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-3xl">
+      {/* Workout Title */}
+      <div className="flex items-center justify-center mb-6">
+        {editingTitle ? (
+          <div className="flex items-center gap-2 w-full max-w-xs">
+            <input
+              className="border rounded px-2 py-1 flex-1 text-lg font-bold text-center"
+              value={tempTitle}
+              onChange={e => setTempTitle(e.target.value)}
+              autoFocus
+              onKeyDown={async e => {
+                if (e.key === 'Enter') {
+                  await handleSaveTitle();
+                } else if (e.key === 'Escape') {
+                  setTempTitle(workoutTitle);
+                  setEditingTitle(false);
+                }
+              }}
+              disabled={loadingStates.savingTitle}
+            />
+            <button
+              aria-label="Save title"
+              className="text-green-600 hover:text-green-800"
+              onClick={handleSaveTitle}
+              disabled={loadingStates.savingTitle}
+            >
+              <CheckIcon className="w-5 h-5" />
+            </button>
+            <button
+              aria-label="Cancel edit"
+              className="text-red-600 hover:text-red-800"
+              onClick={() => {
+                setTempTitle(workoutTitle);
+                setEditingTitle(false);
+              }}
+              disabled={loadingStates.savingTitle}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <h1
+            className="text-2xl font-bold text-center cursor-pointer flex items-center gap-2"
+            onClick={() => setEditingTitle(true)}
+            title="Click to edit title"
+          >
+            {workoutTitle}
+            <Edit className="inline w-4 h-4 text-muted-foreground hover:text-primary self-center mt-1" />
+          </h1>
+        )}
+      </div>
       <main className="space-y-4">
         {DAYS_OF_WEEK.map((dayName) => {
           const isCurrentDay = dayName === currentDayName;
