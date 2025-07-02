@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { addCycle, updateCycle } from "@/app/actions/cycles";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type Cycle = {
   id: string;
@@ -28,8 +29,8 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
   const [cuttingStartDate, setCuttingStartDate] = useState<Date | undefined>(
     new Date()
   );
-  const [showAllBulking, setShowAllBulking] = useState(false);
-  const [showAllCutting, setShowAllCutting] = useState(false);
+  const [showAllBulking, setShowAllBulking] = useState(true);
+  const [showAllCutting, setShowAllCutting] = useState(true);
 
   console.log(initialCycles);
 
@@ -105,215 +106,224 @@ export function CyclesClient({ initialCycles }: { initialCycles: Cycle[] }) {
   return (
     <main className="flex flex-col items-center min-h-screen p-4 mt-10">
       <div className="w-full max-w-md flex flex-col gap-10">
-        {/* Bulking Section */}
-        <section className="border rounded-lg p-4 shadow">
-          <h2 className="text-xl font-semibold mb-2">Bulking</h2>
-          {activeCycle && activeCycle.type === "bulking" ? (
-            <div className="mb-4 flex flex-col gap-2">
-              <span className="text-sm text-muted-foreground">
-                Started:{" "}
-                {activeCycle.start.toLocaleDateString("en-GB", {
-                  timeZone: "UTC",
-                })}
-              </span>
-              <Button variant="default" onClick={handleStop} disabled={saving}>
-                {saving ? "Saving..." : "Stop Bulking"}
-              </Button>
-            </div>
-          ) : (
-            <div className="mb-4 flex flex-row items-center justify-between gap-2">
-              <DatePicker
-                date={bulkingStartDate}
-                setDate={setBulkingStartDate}
-              />
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() =>
-                  handleStart("bulking", bulkingStartDate || new Date())
-                }
-                disabled={!!activeCycle || saving || !bulkingStartDate}
-              >
-                Start Bulking
-              </Button>
-            </div>
-          )}
-          <h3 className="font-medium mb-1">Previous Bulking Seasons:</h3>
-          {error ? (
-            <p className="text-destructive">{error}</p>
-          ) : bulkingSeasons.length === 0 ? (
-            <p className="text-muted-foreground">
-              No bulking seasons started yet.
-            </p>
-          ) : (
-            <>
-              <ul className="list-disc pl-5">
-                {(showAllBulking
-                  ? bulkingSeasons
-                  : bulkingSeasons.slice(0, 1)
-                ).map((season) => (
-                  <li key={season.id} className="mb-2">
-                    <div>
-                      <div className="flex flex-row gap-1">
-                        <span className="font-medium">Start:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {new Date(season.start_date).toLocaleDateString(
-                            "en-GB",
-                            {
-                              timeZone: "UTC",
-                            }
-                          )}
-                        </span>
-                        {season.end_date && (
-                          <>
-                            <span className="font-medium">End:</span>{" "}
+        <Tabs defaultValue="bulking" className="w-full">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="bulking" className="flex-1">Bulking</TabsTrigger>
+            <TabsTrigger value="cutting" className="flex-1">Cutting</TabsTrigger>
+          </TabsList>
+          <TabsContent value="bulking">
+            {/* Bulking Section */}
+            <section>
+              <h2 className="text-xl font-semibold mb-2">Bulking</h2>
+              {activeCycle && activeCycle.type === "bulking" ? (
+                <div className="mb-4 flex flex-col gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Started:{" "}
+                    {activeCycle.start.toLocaleDateString("en-GB", {
+                      timeZone: "UTC",
+                    })}
+                  </span>
+                  <Button variant="default" onClick={handleStop} disabled={saving}>
+                    {saving ? "Saving..." : "Stop Bulking"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="mb-4 flex flex-row items-center justify-between gap-2">
+                  <DatePicker
+                    date={bulkingStartDate}
+                    setDate={setBulkingStartDate}
+                  />
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() =>
+                      handleStart("bulking", bulkingStartDate || new Date())
+                    }
+                    disabled={!!activeCycle || saving || !bulkingStartDate}
+                  >
+                    Start Bulking
+                  </Button>
+                </div>
+              )}
+              <h3 className="font-medium mb-1">Previous Bulking Seasons:</h3>
+              {error ? (
+                <p className="text-destructive">{error}</p>
+              ) : bulkingSeasons.length === 0 ? (
+                <p className="text-muted-foreground">
+                  No bulking seasons started yet.
+                </p>
+              ) : (
+                <>
+                  <ul className="list-disc pl-5">
+                    {(showAllBulking
+                      ? bulkingSeasons
+                      : bulkingSeasons.slice(0, 1)
+                    ).map((season) => (
+                      <li key={season.id} className="mb-2">
+                        <div>
+                          <div className="flex flex-row gap-1">
+                            <span className="font-medium">Start:</span>{" "}
                             <span className="text-muted-foreground">
-                              {new Date(season.end_date).toLocaleDateString(
+                              {new Date(season.start_date).toLocaleDateString(
                                 "en-GB",
                                 {
                                   timeZone: "UTC",
                                 }
                               )}
                             </span>
-                          </>
-                        )}
-                      </div>
-                      {season.end_date && (
-                        <div className="text-left">
-                          <span className="font-medium">Duration:</span>{" "}
-                          <span className="text-muted-foreground">
-                            {getDurationDays(
-                              season.start_date,
-                              season.end_date
-                            )}{" "}
-                            days
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {bulkingSeasons.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => setShowAllBulking((prev) => !prev)}
-                >
-                  {showAllBulking
-                    ? "Show less"
-                    : `Show more (${bulkingSeasons.length - 1} more)`}
-                </Button>
-              )}
-            </>
-          )}
-        </section>
-
-        {/* Cutting Section */}
-        <section className="border rounded-lg p-4 shadow">
-          <h2 className="text-xl font-semibold mb-2">Cutting</h2>
-          {activeCycle && activeCycle.type === "cutting" ? (
-            <div className="mb-4 flex flex-col gap-2">
-              <span className="text-sm text-muted-foreground">
-                Started:{" "}
-                {activeCycle.start.toLocaleDateString("en-GB", {
-                  timeZone: "UTC",
-                })}
-              </span>
-              <Button variant="default" onClick={handleStop} disabled={saving}>
-                {saving ? "Saving..." : "Stop Cutting"}
-              </Button>
-            </div>
-          ) : (
-            <div className="mb-4 flex flex-row items-center gap-2">
-              <DatePicker
-                date={cuttingStartDate}
-                setDate={setCuttingStartDate}
-              />
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() =>
-                  handleStart("cutting", cuttingStartDate || new Date())
-                }
-                disabled={!!activeCycle || saving || !cuttingStartDate}
-              >
-                Start Cutting
-              </Button>
-            </div>
-          )}
-          <h3 className="font-medium mb-1">Previous Cutting Seasons:</h3>
-          {error ? (
-            <p className="text-destructive">{error}</p>
-          ) : cuttingSeasons.length === 0 ? (
-            <p className="text-muted-foreground">
-              No cutting seasons started yet.
-            </p>
-          ) : (
-            <>
-              <ul className="list-disc pl-5">
-                {(showAllCutting
-                  ? cuttingSeasons
-                  : cuttingSeasons.slice(0, 1)
-                ).map((season) => (
-                  <li key={season.id} className="mb-2">
-                    <div>
-                      <div className="flex flex-row gap-1">
-                        <span className="font-medium">Start:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {new Date(season.start_date).toLocaleDateString(
-                            "en-GB",
-                            {
-                              timeZone: "UTC",
-                            }
+                            {season.end_date && (
+                              <>
+                                <span className="font-medium">End:</span>{" "}
+                                <span className="text-muted-foreground">
+                                  {new Date(season.end_date).toLocaleDateString(
+                                    "en-GB",
+                                    {
+                                      timeZone: "UTC",
+                                    }
+                                  )}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {season.end_date && (
+                            <div className="text-left">
+                              <span className="font-medium">Duration:</span>{" "}
+                              <span className="text-muted-foreground">
+                                {getDurationDays(
+                                  season.start_date,
+                                  season.end_date
+                                )}{" "}
+                                days
+                              </span>
+                            </div>
                           )}
-                        </span>
-                        {season.end_date && (
-                          <>
-                            <span className="font-medium">End:</span>{" "}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {bulkingSeasons.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setShowAllBulking((prev) => !prev)}
+                    >
+                      {showAllBulking
+                        ? "Show less"
+                        : `Show more (${bulkingSeasons.length - 1} more)`}
+                    </Button>
+                  )}
+                </>
+              )}
+            </section>
+          </TabsContent>
+          <TabsContent value="cutting">
+            {/* Cutting Section */}
+            <section>
+              <h2 className="text-xl font-semibold mb-2">Cutting</h2>
+              {activeCycle && activeCycle.type === "cutting" ? (
+                <div className="mb-4 flex flex-col gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Started:{" "}
+                    {activeCycle.start.toLocaleDateString("en-GB", {
+                      timeZone: "UTC",
+                    })}
+                  </span>
+                  <Button variant="default" onClick={handleStop} disabled={saving}>
+                    {saving ? "Saving..." : "Stop Cutting"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="mb-4 flex flex-row items-center gap-2">
+                  <DatePicker
+                    date={cuttingStartDate}
+                    setDate={setCuttingStartDate}
+                  />
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() =>
+                      handleStart("cutting", cuttingStartDate || new Date())
+                    }
+                    disabled={!!activeCycle || saving || !cuttingStartDate}
+                  >
+                    Start Cutting
+                  </Button>
+                </div>
+              )}
+              <h3 className="font-medium mb-1">Previous Cutting Seasons:</h3>
+              {error ? (
+                <p className="text-destructive">{error}</p>
+              ) : cuttingSeasons.length === 0 ? (
+                <p className="text-muted-foreground">
+                  No cutting seasons started yet.
+                </p>
+              ) : (
+                <>
+                  <ul className="list-disc pl-5">
+                    {(showAllCutting
+                      ? cuttingSeasons
+                      : cuttingSeasons.slice(0, 1)
+                    ).map((season) => (
+                      <li key={season.id} className="mb-2">
+                        <div>
+                          <div className="flex flex-row gap-1">
+                            <span className="font-medium">Start:</span>{" "}
                             <span className="text-muted-foreground">
-                              {new Date(season.end_date).toLocaleDateString(
+                              {new Date(season.start_date).toLocaleDateString(
                                 "en-GB",
                                 {
                                   timeZone: "UTC",
                                 }
                               )}
                             </span>
-                          </>
-                        )}
-                      </div>
-                      {season.end_date && (
-                        <div className="text-left">
-                          <span className="font-medium">Duration:</span>{" "}
-                          <span className="text-muted-foreground">
-                            {getDurationDays(
-                              season.start_date,
-                              season.end_date
-                            )}{" "}
-                            days
-                          </span>
+                            {season.end_date && (
+                              <>
+                                <span className="font-medium">End:</span>{" "}
+                                <span className="text-muted-foreground">
+                                  {new Date(season.end_date).toLocaleDateString(
+                                    "en-GB",
+                                    {
+                                      timeZone: "UTC",
+                                    }
+                                  )}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {season.end_date && (
+                            <div className="text-left">
+                              <span className="font-medium">Duration:</span>{" "}
+                              <span className="text-muted-foreground">
+                                {getDurationDays(
+                                  season.start_date,
+                                  season.end_date
+                                )}{" "}
+                                days
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {cuttingSeasons.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => setShowAllCutting((prev) => !prev)}
-                >
-                  {showAllCutting
-                    ? "Show less"
-                    : `Show more (${cuttingSeasons.length - 1} more)`}
-                </Button>
+                      </li>
+                    ))}
+                  </ul>
+                  {cuttingSeasons.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setShowAllCutting((prev) => !prev)}
+                    >
+                      {showAllCutting
+                        ? "Show less"
+                        : `Show more (${cuttingSeasons.length - 1} more)`}
+                    </Button>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </section>
+            </section>
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );

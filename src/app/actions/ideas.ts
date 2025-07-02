@@ -29,27 +29,19 @@ export async function getFoodIdeas(cookieStore: ReturnType<typeof cookies>, sess
 }
 
 export async function addFoodIdea(
-  meal: "morning" | "lunch" | "afternoon" | "dinner",
+  cycleId: string,
+  week: number,
+  meal: string,
   text: string
 ) {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
-
+  const supabase = createClient(cookies());
   const { data, error } = await supabase
-    .from("food_ideas")
-    .insert([{ user_id: session.user.id, meal, text }])
+    .from('food_ideas')
+    .insert([{ cycle_id: cycleId, week, meal, text }])
     .select()
     .single();
-
   if (error) throw error;
-
-  revalidateTag("food-ideas");
-  
-  return data as FoodIdea;
+  return data;
 }
 
 export async function deleteFoodIdea(id: string) {
@@ -86,4 +78,15 @@ export async function updateFoodIdea(id: string, newText: string) {
   if (error) throw error;
 
   revalidateTag("food-ideas");
+}
+
+export async function getIdeasForWeek(cycleId: string, week: number) {
+  const supabase = createClient(cookies());
+  const { data, error } = await supabase
+    .from('food_ideas')
+    .select('*')
+    .eq('cycle_id', cycleId)
+    .eq('week', week);
+  if (error) throw error;
+  return data;
 } 

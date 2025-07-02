@@ -1,3 +1,5 @@
+"use server";
+
 import { getCycles } from "@/app/actions/cycles";
 import { CyclesClient } from "./CyclesClient";
 import { cookies } from "next/headers";
