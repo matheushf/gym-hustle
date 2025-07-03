@@ -44,6 +44,19 @@ export interface Workout {
   days: WorkoutDay[];
 }
 
+export interface WorkoutTime {
+  id: string;
+  user_id: string;
+  workout_id: string;
+  day_name: string;
+  date: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export async function getWorkoutDays(
   cookieStore: ReturnType<typeof cookies>,
   session: Session | null
@@ -680,4 +693,142 @@ export async function deleteWorkout(workoutId: string) {
   revalidatePath("/saved-workouts");
   revalidatePath("/workout");
   if (userId) revalidateTag(`workout-${userId}`);
+}
+
+/**
+ * Start a workout timer for the user/workout/day. Always creates a new timer for today, even if a previous one exists.
+ */
+export async function startWorkoutTimer(workoutId: string, dayName: string): Promise<WorkoutTime> {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  const userId = session.user.id;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // 1. End any previous running timer for today (if exists)
+  const { data: runningTimer } = await supabase
+    .from("workout_times")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("workout_id", workoutId)
+    .eq("day_name", dayName)
+    .eq("date", today)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (runningTimer) {
+    const endedAt = new Date().toISOString();
+    const startedAt = new Date(runningTimer.started_at).getTime();
+    const endedAtMs = new Date(endedAt).getTime();
+    const duration = Math.floor((endedAtMs - startedAt) / 1000);
+    await supabase
+      .from("workout_times")
+      .update({ ended_at: endedAt, duration_seconds: duration })
+      .eq("id", runningTimer.id);
+  }
+
+  // 2. Insert a new timer for today
+  const { data, error } = await supabase
+    .from("workout_times")
+    .insert({
+      user_id: userId,
+      workout_id: workoutId,
+      day_name: dayName,
+      date: today,
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as WorkoutTime;
+}
+
+/**
+ * Stop the current workout timer for the user/workout/day. Sets ended_at and duration_seconds.
+ */
+export async function stopWorkoutTimer(workoutId: string, dayName: string): Promise<WorkoutTime | null> {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  const userId = session.user.id;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // Find the running timer
+  const { data: timer, error: fetchError } = await supabase
+    .from("workout_times")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("workout_id", workoutId)
+    .eq("day_name", dayName)
+    .eq("date", today)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!timer) return null;
+
+  const endedAt = new Date().toISOString();
+  const startedAt = new Date(timer.started_at).getTime();
+  const endedAtMs = new Date(endedAt).getTime();
+  const duration = Math.floor((endedAtMs - startedAt) / 1000);
+
+  const { data: updated, error } = await supabase
+    .from("workout_times")
+    .update({ ended_at: endedAt, duration_seconds: duration })
+    .eq("id", timer.id)
+    .select()
+    .single();
+  if (error) throw error;
+  return updated as WorkoutTime;
+}
+
+/**
+ * Fetch the last workout timer for a user/workout/day (optionally for a specific date).
+ */
+export async function getLastWorkoutTimer(workoutId: string, dayName: string, date?: string): Promise<WorkoutTime | null> {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  const userId = session.user.id;
+  let query = supabase
+    .from("workout_times")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("workout_id", workoutId)
+    .eq("day_name", dayName)
+    .order("date", { ascending: false })
+    .limit(1);
+  if (date) {
+    query = query.eq("date", date);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return data[0] as WorkoutTime;
+}
+
+/**
+ * Update a workout timer's duration_seconds and ended_at. Only for the current user's timer.
+ */
+export async function updateWorkoutTimerDuration(timerId: string, newDurationSeconds: number, newEndedAt?: string): Promise<WorkoutTime> {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  const userId = session.user.id;
+
+  // Update the timer (only if it belongs to the user)
+  const { data, error } = await supabase
+    .from("workout_times")
+    .update({
+      duration_seconds: newDurationSeconds,
+      ...(newEndedAt ? { ended_at: newEndedAt } : {}),
+    })
+    .eq("id", timerId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as WorkoutTime;
 }

@@ -2,11 +2,12 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Plus, X, CheckIcon } from "lucide-react";
+import { Loader2, Plus, X, CheckIcon, PlayIcon, SquareIcon, PencilIcon } from "lucide-react";
 import { ExerciseItem } from "./ExerciseItem";
 import type { Exercise, WorkoutDay } from "@/app/actions/workout";
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EditingExercise, NewExercise } from "@/app/workout/types";
+import { startWorkoutTimer, stopWorkoutTimer, getLastWorkoutTimer, type WorkoutTime, updateWorkoutTimerDuration } from '@/app/actions/workout';
 
 interface DaySectionProps {
   dayName: string;
@@ -36,6 +37,7 @@ interface DaySectionProps {
   onEditingExerciseSetChange: (idx: number, field: 'reps' | 'weight', value: string) => void;
   onRemoveEditingExerciseSet: (idx: number) => void;
   onAddEditingExerciseSet: () => void;
+  workoutId: string;
 }
 
 interface LoadingStates {
@@ -72,6 +74,7 @@ export function DaySection({
   onEditingExerciseSetChange,
   onRemoveEditingExerciseSet,
   onAddEditingExerciseSet,
+  workoutId,
 }: DaySectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -88,6 +91,16 @@ export function DaySection({
   const nameInputRef = useRef<HTMLInputElement>(null);
   const previousExerciseIdRef = useRef<string | null>(null);
 
+  // TIMER STATE/LOGIC
+  const [timer, setTimer] = useState<WorkoutTime | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsed, setElapsed] = useState<number>(0); // seconds
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [loadingTimer, setLoadingTimer] = useState(false);
+  const [editingDuration, setEditingDuration] = useState(false);
+  const [editHours, setEditHours] = useState('0');
+  const [editMinutes, setEditMinutes] = useState('0');
+
   useEffect(() => {
     if (editingExercise && editingExercise.id !== previousExerciseIdRef.current) {
       weightInputRef.current?.focus();
@@ -103,12 +116,280 @@ export function DaySection({
     }
   }, [isAddingExercise]);
 
+  // Fetch last timer on mount or when workoutId/dayName changes
+  useEffect(() => {
+    let ignore = false;
+    async function fetchTimer() {
+      setLoadingTimer(true);
+      try {
+        const last = await getLastWorkoutTimer(workoutId, dayName);
+        if (!ignore) {
+          setTimer(last);
+          if (last && last.ended_at === null) {
+            setIsRunning(true);
+            setElapsed(Math.floor((Date.now() - new Date(last.started_at).getTime()) / 1000));
+          } else if (last && last.duration_seconds != null) {
+            setIsRunning(false);
+            setElapsed(last.duration_seconds);
+          } else {
+            setIsRunning(false);
+            setElapsed(0);
+          }
+        }
+      } finally {
+        setLoadingTimer(false);
+      }
+    }
+    fetchTimer();
+    return () => { ignore = true; };
+  }, [workoutId, dayName]);
+
+  // Live timer effect
+  useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(prev => prev + 1);
+      }, 1000);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isRunning]);
+
+  // When timer changes, update edit fields
+  useEffect(() => {
+    if (timer && timer.duration_seconds != null) {
+      const h = Math.floor(timer.duration_seconds / 3600);
+      const m = Math.floor((timer.duration_seconds % 3600) / 60);
+      setEditHours(h.toString());
+      setEditMinutes(m.toString());
+    }
+  }, [timer]);
+
+  // Format seconds as HH:MM:SS
+  function formatDuration(sec: number) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return [h, m, s]
+      .map(v => v.toString().padStart(2, '0'))
+      .join(':');
+  }
+
+  // Start timer handler
+  async function handleStart() {
+    setLoadingTimer(true);
+    try {
+      const started = await startWorkoutTimer(workoutId, dayName);
+      setTimer(started);
+      setIsRunning(true);
+      setElapsed(0);
+    } finally {
+      setLoadingTimer(false);
+    }
+  }
+
+  // Stop timer handler
+  async function handleStop() {
+    setLoadingTimer(true);
+    try {
+      const stopped = await stopWorkoutTimer(workoutId, dayName);
+      setTimer(stopped);
+      setIsRunning(false);
+      if (stopped && stopped.duration_seconds != null) {
+        setElapsed(stopped.duration_seconds);
+      }
+    } finally {
+      setLoadingTimer(false);
+    }
+  }
+
+  // Save edited duration
+  async function handleSaveDuration() {
+    setLoadingTimer(true);
+    try {
+      const hours = parseInt(editHours, 10) || 0;
+      const minutes = parseInt(editMinutes, 10) || 0;
+      const newDuration = hours * 3600 + minutes * 60;
+      if (!timer) return;
+      const updated = await updateWorkoutTimerDuration(timer.id, newDuration);
+      setTimer(updated);
+      setElapsed(updated.duration_seconds ?? 0);
+      setEditingDuration(false);
+    } finally {
+      setLoadingTimer(false);
+    }
+  }
+
+  // Fetch last timer on mount or when workoutId/dayName changes
+  useEffect(() => {
+    let ignore = false;
+    async function fetchTimer() {
+      setLoadingTimer(true);
+      try {
+        const last = await getLastWorkoutTimer(workoutId, dayName);
+        if (!ignore) {
+          setTimer(last);
+          if (last && last.ended_at === null) {
+            setIsRunning(true);
+            setElapsed(Math.floor((Date.now() - new Date(last.started_at).getTime()) / 1000));
+          } else if (last && last.duration_seconds != null) {
+            setIsRunning(false);
+            setElapsed(last.duration_seconds);
+          } else {
+            setIsRunning(false);
+            setElapsed(0);
+          }
+        }
+      } finally {
+        setLoadingTimer(false);
+      }
+    }
+    fetchTimer();
+    return () => { ignore = true; };
+  }, [workoutId, dayName]);
+
+  // Live timer effect
+  useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(prev => prev + 1);
+      }, 1000);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isRunning]);
+
+  // When timer changes, update edit fields
+  useEffect(() => {
+    if (timer && timer.duration_seconds != null) {
+      const h = Math.floor(timer.duration_seconds / 3600);
+      const m = Math.floor((timer.duration_seconds % 3600) / 60);
+      setEditHours(h.toString());
+      setEditMinutes(m.toString());
+    }
+  }, [timer]);
+
+  // Format seconds as HH:MM:SS
+  function formatDuration(sec: number) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return [h, m, s]
+      .map(v => v.toString().padStart(2, '0'))
+      .join(':');
+  }
+
+  // Start timer handler
+  async function handleStart() {
+    setLoadingTimer(true);
+    try {
+      const started = await startWorkoutTimer(workoutId, dayName);
+      setTimer(started);
+      setIsRunning(true);
+      setElapsed(0);
+    } finally {
+      setLoadingTimer(false);
+    }
+  }
+
+  // Stop timer handler
+  async function handleStop() {
+    setLoadingTimer(true);
+    try {
+      const stopped = await stopWorkoutTimer(workoutId, dayName);
+      setTimer(stopped);
+      setIsRunning(false);
+      if (stopped && stopped.duration_seconds != null) {
+        setElapsed(stopped.duration_seconds);
+      }
+    } finally {
+      setLoadingTimer(false);
+    }
+  }
+
+  // Save edited duration
   const exercises = dayWorkout?.exercises || [];
   const hasExercises = exercises.length > 0;
 
   return (
     <div className={`p-6 rounded-lg border bg-card text-card-foreground shadow-sm${isCurrentDay && !isCreatingNew ? ' border-1 border-primary' : ''}`}>
-      <h2 className="text-xl font-semibold mb-6">{dayName}</h2>
+      <h2 className="text-xl font-semibold mb-2">{dayName}</h2>
+      {/* TIMER UI */}
+      <div className="mb-4 ml-[-6px] flex flex-col items-start gap-2">
+        {loadingTimer ? (
+          <span className="text-muted-foreground text-sm">Loading timer...</span>
+        ) : (
+          <div className="flex items-center gap-2">
+            {isCurrentDay && !isCreatingNew && (
+              isRunning ? (
+                <Button size="icon" variant="ghost" onClick={handleStop} disabled={loadingTimer} aria-label="Stop Timer">
+                  <SquareIcon className="w-5 h-5 text-red-600" />
+                </Button>
+              ) : (
+                <Button size="icon" variant="ghost" onClick={handleStart} disabled={loadingTimer} aria-label="Start Timer">
+                  <PlayIcon className="w-5 h-5 text-green-600" />
+                </Button>
+              )
+            )}
+            <span className="text-sm flex items-center gap-2">
+              {isRunning
+                ? <>Workout started: <span className="font-mono ml-2">{formatDuration(elapsed)}</span></>
+                : timer && timer.duration_seconds != null && !editingDuration
+                  ? <>
+                      Last workout: <span className="font-mono ml-2">{formatDuration(timer.duration_seconds)}</span>
+                      <button
+                        className="ml-1 p-1 hover:bg-muted rounded"
+                        onClick={() => setEditingDuration(true)}
+                        aria-label="Edit duration"
+                        type="button"
+                      >
+                        <PencilIcon className="w-3 h-3" />
+                      </button>
+                    </>
+                  : timer && timer.duration_seconds != null && editingDuration
+                    ? <>
+                        Last workout:
+                        <input
+                          type="number"
+                          min="0"
+                          max="23"
+                          value={editHours}
+                          onChange={e => setEditHours(e.target.value)}
+                          className="w-15 mx-1 px-1 py-0.5 border rounded text-center font-mono"
+                          aria-label="Hours"
+                        />
+                        :
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={editMinutes}
+                          onChange={e => setEditMinutes(e.target.value)}
+                          className="w-15 mx-1 px-1 py-0.5 border rounded text-center font-mono"
+                          aria-label="Minutes"
+                        />
+                        <Button size="icon" variant="ghost" onClick={handleSaveDuration} disabled={loadingTimer} aria-label="Save duration">
+                          <CheckIcon className="w-4 h-4 text-green-600" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => setEditingDuration(false)} disabled={loadingTimer} aria-label="Cancel edit">
+                          <X className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </>
+                  : <div className="ml-2">Last workout: 00:00:00</div>
+              }
+            </span>
+          </div>
+        )}
+      </div>
+      {/* END TIMER UI */}
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
