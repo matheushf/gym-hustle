@@ -98,7 +98,7 @@ export function DaySection({
   const [isRunning, setIsRunning] = useState(false);
   const [elapsed, setElapsed] = useState<number>(0); // seconds
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [loadingTimer, setLoadingTimer] = useState(false);
+  const [loadingTimer, setLoadingTimer] = useState(true);
   const [editingDuration, setEditingDuration] = useState(false);
   const [editHours, setEditHours] = useState('0');
   const [editMinutes, setEditMinutes] = useState('0');
@@ -120,10 +120,25 @@ export function DaySection({
 
   // Fetch last timer on mount or when workoutId/dayName changes
   useEffect(() => {
-    if (initialTimer !== undefined) {
-      // If initialTimer is provided, skip the first fetch
+    if (initialTimer !== undefined && initialTimer !== null) {
+      // Hydrate from initialTimer
+      setTimer(initialTimer);
+      if (initialTimer.ended_at === null) {
+        setIsRunning(true);
+        setLoadingTimer(false)
+        setElapsed(Math.floor((Date.now() - new Date(initialTimer.started_at).getTime()) / 1000));
+      } else if (initialTimer.duration_seconds != null) {
+        setIsRunning(false);
+        setLoadingTimer(false);
+        setElapsed(initialTimer.duration_seconds);
+      } else {
+        setIsRunning(false);
+        setLoadingTimer(false);
+        setElapsed(0);
+      }
       return;
     }
+    // Otherwise, fetch from backend
     let ignore = false;
     async function fetchTimer() {
       setLoadingTimer(true);
@@ -132,13 +147,16 @@ export function DaySection({
         if (!ignore) {
           setTimer(last);
           if (last && last.ended_at === null) {
+            setLoadingTimer(false)
             setIsRunning(true);
             setElapsed(Math.floor((Date.now() - new Date(last.started_at).getTime()) / 1000));
           } else if (last && last.duration_seconds != null) {
             setIsRunning(false);
+            setLoadingTimer(false);
             setElapsed(last.duration_seconds);
           } else {
             setIsRunning(false);
+            setLoadingTimer(false);
             setElapsed(0);
           }
         }
@@ -206,6 +224,7 @@ export function DaySection({
   async function handleStart() {
     // Optimistically start the timer
     const now = new Date();
+    setLoadingTimer(false);
     setIsRunning(true);
     setElapsed(0);
     setTimer(prev => ({
@@ -228,6 +247,7 @@ export function DaySection({
       setElapsed(0);
     } catch {
       setIsRunning(false);
+      setLoadingTimer(false);
       setTimer(null);
       setElapsed(0);
       // Optionally show an error toast
@@ -260,7 +280,11 @@ export function DaySection({
       <div className="mb-4 ml-[-6px] flex flex-col items-start gap-2">
         <div className="flex items-center gap-2">
           {isCurrentDay && !isCreatingNew && (
-            isRunning ? (
+            loadingTimer ? (
+              <Button size="icon" variant="ghost" disabled aria-label="Loading Timer">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </Button>
+            ) : isRunning ? (
               <Button size="icon" variant="ghost" onClick={handleStop} disabled={loadingTimer} aria-label="Stop Timer">
                 <SquareIcon className="w-5 h-5 text-red-600" />
               </Button>
