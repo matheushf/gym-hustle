@@ -617,6 +617,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
                 onEditingExerciseSetChange={onEditingExerciseSetChange}
                 onAddEditingExerciseSet={onAddEditingExerciseSet}
                 onRemoveEditingExerciseSet={onRemoveEditingExerciseSet}
+                workoutId={workoutId}
               />
             </div>
           );
