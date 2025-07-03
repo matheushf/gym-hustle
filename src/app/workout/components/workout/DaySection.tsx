@@ -38,6 +38,7 @@ interface DaySectionProps {
   onRemoveEditingExerciseSet: (idx: number) => void;
   onAddEditingExerciseSet: () => void;
   workoutId: string;
+  initialTimer?: WorkoutTime | null;
 }
 
 interface LoadingStates {
@@ -75,6 +76,7 @@ export function DaySection({
   onRemoveEditingExerciseSet,
   onAddEditingExerciseSet,
   workoutId,
+  initialTimer,
 }: DaySectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -92,7 +94,7 @@ export function DaySection({
   const previousExerciseIdRef = useRef<string | null>(null);
 
   // TIMER STATE/LOGIC
-  const [timer, setTimer] = useState<WorkoutTime | null>(null);
+  const [timer, setTimer] = useState<WorkoutTime | null>(initialTimer ?? null);
   const [isRunning, setIsRunning] = useState(false);
   const [elapsed, setElapsed] = useState<number>(0); // seconds
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -118,6 +120,10 @@ export function DaySection({
 
   // Fetch last timer on mount or when workoutId/dayName changes
   useEffect(() => {
+    if (initialTimer !== undefined) {
+      // If initialTimer is provided, skip the first fetch
+      return;
+    }
     let ignore = false;
     async function fetchTimer() {
       setLoadingTimer(true);
@@ -142,7 +148,7 @@ export function DaySection({
     }
     fetchTimer();
     return () => { ignore = true; };
-  }, [workoutId, dayName]);
+  }, [workoutId, dayName, initialTimer]);
 
   // Live timer effect
   useEffect(() => {
@@ -158,6 +164,16 @@ export function DaySection({
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isRunning]);
+
+  // Format seconds as HH:MM:SS
+  function formatDuration(sec: number) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return [h, m, s]
+      .map(v => v.toString().padStart(2, '0'))
+      .join(':');
+  }
 
   // When timer changes, update edit fields
   useEffect(() => {
@@ -184,69 +200,6 @@ export function DaySection({
     } finally {
       setLoadingTimer(false);
     }
-  }
-
-  // Fetch last timer on mount or when workoutId/dayName changes
-  useEffect(() => {
-    let ignore = false;
-    async function fetchTimer() {
-      setLoadingTimer(true);
-      try {
-        const last = await getLastWorkoutTimer(workoutId, dayName);
-        if (!ignore) {
-          setTimer(last);
-          if (last && last.ended_at === null) {
-            setIsRunning(true);
-            setElapsed(Math.floor((Date.now() - new Date(last.started_at).getTime()) / 1000));
-          } else if (last && last.duration_seconds != null) {
-            setIsRunning(false);
-            setElapsed(last.duration_seconds);
-          } else {
-            setIsRunning(false);
-            setElapsed(0);
-          }
-        }
-      } finally {
-        setLoadingTimer(false);
-      }
-    }
-    fetchTimer();
-    return () => { ignore = true; };
-  }, [workoutId, dayName]);
-
-  // Live timer effect
-  useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        setElapsed(prev => prev + 1);
-      }, 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isRunning]);
-
-  // When timer changes, update edit fields
-  useEffect(() => {
-    if (timer && timer.duration_seconds != null) {
-      const h = Math.floor(timer.duration_seconds / 3600);
-      const m = Math.floor((timer.duration_seconds % 3600) / 60);
-      setEditHours(h.toString());
-      setEditMinutes(m.toString());
-    }
-  }, [timer]);
-
-  // Format seconds as HH:MM:SS
-  function formatDuration(sec: number) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return [h, m, s]
-      .map(v => v.toString().padStart(2, '0'))
-      .join(':');
   }
 
   // Start timer handler

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import {
   updateExercise,
@@ -31,6 +31,8 @@ interface WorkoutPageClientProps {
   workoutId: string;
   initialWorkoutTitle: string;
   initialWorkoutDays: WorkoutDay[];
+  currentDayName: string;
+  initialCurrentDayTimer: import("@/app/actions/workout").WorkoutTime | null;
 }
 
 const DAYS_OF_WEEK = [
@@ -43,7 +45,7 @@ const DAYS_OF_WEEK = [
   "Sunday",
 ];
 
-export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorkoutDays }: WorkoutPageClientProps) {
+export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorkoutDays, currentDayName, initialCurrentDayTimer }: WorkoutPageClientProps) {
   const router = useRouter();
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>(initialWorkoutDays);
   const [editingExercise, setEditingExercise] = useState<EditingExercise | null>(null);
@@ -79,11 +81,6 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
 
   // Create refs for each day
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const currentDayName = useMemo(() => {
-    const today = new Date();
-    return DAYS_OF_WEEK[today.getDay() === 0 ? 6 : today.getDay() - 1];
-  }, []);
 
   useEffect(() => {
     const today = new Date();
@@ -618,6 +615,7 @@ export function WorkoutPageClient({ workoutId, initialWorkoutTitle, initialWorko
                 onAddEditingExerciseSet={onAddEditingExerciseSet}
                 onRemoveEditingExerciseSet={onRemoveEditingExerciseSet}
                 workoutId={workoutId}
+                {...(isCurrentDay ? { initialTimer: initialCurrentDayTimer } : {})}
               />
             </div>
           );
