@@ -204,14 +204,33 @@ export function DaySection({
 
   // Start timer handler
   async function handleStart() {
-    setLoadingTimer(true);
+    // Optimistically start the timer
+    const now = new Date();
+    setIsRunning(true);
+    setElapsed(0);
+    setTimer(prev => ({
+      ...(prev || {}),
+      id: "optimistic",
+      user_id: prev?.user_id || "",
+      workout_id: workoutId,
+      day_name: dayName,
+      date: now.toISOString().slice(0, 10),
+      started_at: now.toISOString(),
+      ended_at: null,
+      duration_seconds: null,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    }));
+    // Fire the backend request in the background
     try {
       const started = await startWorkoutTimer(workoutId, dayName);
       setTimer(started);
-      setIsRunning(true);
       setElapsed(0);
-    } finally {
-      setLoadingTimer(false);
+    } catch {
+      setIsRunning(false);
+      setTimer(null);
+      setElapsed(0);
+      // Optionally show an error toast
     }
   }
 
@@ -239,70 +258,66 @@ export function DaySection({
       <h2 className="text-xl font-semibold mb-2">{dayName}</h2>
       {/* TIMER UI */}
       <div className="mb-4 ml-[-6px] flex flex-col items-start gap-2">
-        {loadingTimer ? (
-          <span className="text-muted-foreground text-sm">Loading timer...</span>
-        ) : (
-          <div className="flex items-center gap-2">
-            {isCurrentDay && !isCreatingNew && (
-              isRunning ? (
-                <Button size="icon" variant="ghost" onClick={handleStop} disabled={loadingTimer} aria-label="Stop Timer">
-                  <SquareIcon className="w-5 h-5 text-red-600" />
-                </Button>
-              ) : (
-                <Button size="icon" variant="ghost" onClick={handleStart} disabled={loadingTimer} aria-label="Start Timer">
-                  <PlayIcon className="w-5 h-5 text-green-600" />
-                </Button>
-              )
-            )}
-            <span className="text-sm flex items-center gap-2">
-              {isRunning
-                ? <>Workout started: <span className="font-mono ml-2">{formatDuration(elapsed)}</span></>
-                : timer && timer.duration_seconds != null && !editingDuration
+        <div className="flex items-center gap-2">
+          {isCurrentDay && !isCreatingNew && (
+            isRunning ? (
+              <Button size="icon" variant="ghost" onClick={handleStop} disabled={loadingTimer} aria-label="Stop Timer">
+                <SquareIcon className="w-5 h-5 text-red-600" />
+              </Button>
+            ) : (
+              <Button size="icon" variant="ghost" onClick={handleStart} aria-label="Start Timer">
+                <PlayIcon className="w-5 h-5 text-green-600" />
+              </Button>
+            )
+          )}
+          <span className="text-sm flex items-center gap-2">
+            {isRunning
+              ? <>Workout started: <span className="font-mono ml-2">{formatDuration(elapsed)}</span></>
+              : timer && timer.duration_seconds != null && !editingDuration
+                ? <>
+                    Last workout: <span className="font-mono ml-2">{formatDuration(timer.duration_seconds)}</span>
+                    <button
+                      className="ml-1 p-1 hover:bg-muted rounded"
+                      onClick={() => setEditingDuration(true)}
+                      aria-label="Edit duration"
+                      type="button"
+                    >
+                      <PencilIcon className="w-3 h-3" />
+                    </button>
+                  </>
+                : timer && timer.duration_seconds != null && editingDuration
                   ? <>
-                      Last workout: <span className="font-mono ml-2">{formatDuration(timer.duration_seconds)}</span>
-                      <button
-                        className="ml-1 p-1 hover:bg-muted rounded"
-                        onClick={() => setEditingDuration(true)}
-                        aria-label="Edit duration"
-                        type="button"
-                      >
-                        <PencilIcon className="w-3 h-3" />
-                      </button>
+                      Last workout:
+                      <input
+                        type="number"
+                        min="0"
+                        max="23"
+                        value={editHours}
+                        onChange={e => setEditHours(e.target.value)}
+                        className="w-15 mx-1 px-1 py-0.5 border rounded text-center font-mono"
+                        aria-label="Hours"
+                      />
+                      :
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={editMinutes}
+                        onChange={e => setEditMinutes(e.target.value)}
+                        className="w-15 mx-1 px-1 py-0.5 border rounded text-center font-mono"
+                        aria-label="Minutes"
+                      />
+                      <Button size="icon" variant="ghost" onClick={handleSaveDuration} disabled={loadingTimer} aria-label="Save duration">
+                        <CheckIcon className="w-4 h-4 text-green-600" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setEditingDuration(false)} disabled={loadingTimer} aria-label="Cancel edit">
+                        <X className="w-4 h-4 text-red-600" />
+                      </Button>
                     </>
-                  : timer && timer.duration_seconds != null && editingDuration
-                    ? <>
-                        Last workout:
-                        <input
-                          type="number"
-                          min="0"
-                          max="23"
-                          value={editHours}
-                          onChange={e => setEditHours(e.target.value)}
-                          className="w-15 mx-1 px-1 py-0.5 border rounded text-center font-mono"
-                          aria-label="Hours"
-                        />
-                        :
-                        <input
-                          type="number"
-                          min="0"
-                          max="59"
-                          value={editMinutes}
-                          onChange={e => setEditMinutes(e.target.value)}
-                          className="w-15 mx-1 px-1 py-0.5 border rounded text-center font-mono"
-                          aria-label="Minutes"
-                        />
-                        <Button size="icon" variant="ghost" onClick={handleSaveDuration} disabled={loadingTimer} aria-label="Save duration">
-                          <CheckIcon className="w-4 h-4 text-green-600" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => setEditingDuration(false)} disabled={loadingTimer} aria-label="Cancel edit">
-                          <X className="w-4 h-4 text-red-600" />
-                        </Button>
-                      </>
                   : <div className="ml-2">Last workout: 00:00:00</div>
-              }
-            </span>
-          </div>
-        )}
+            }
+          </span>
+        </div>
       </div>
       {/* END TIMER UI */}
 
