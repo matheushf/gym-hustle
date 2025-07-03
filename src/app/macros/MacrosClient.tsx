@@ -226,16 +226,48 @@ export function MacrosClient({
     }));
   };
 
+  const [addIdeaError, setAddIdeaError] = useState<Record<(typeof meals)[number], string | null>>({
+    morning: null,
+    lunch: null,
+    afternoon: null,
+    dinner: null,
+  });
+  const [addIdeaLoading, setAddIdeaLoading] = useState<Record<(typeof meals)[number], boolean>>({
+    morning: false,
+    lunch: false,
+    afternoon: false,
+    dinner: false,
+  });
+
   const handleAddIdea = async (meal: (typeof meals)[number]) => {
+    setAddIdeaError((prev: Record<(typeof meals)[number], string | null>) => ({ ...prev, [meal]: null }));
+    setAddIdeaLoading((prev: Record<(typeof meals)[number], boolean>) => ({ ...prev, [meal]: true }));
     const text = newIdea[meal].trim();
     if (text) {
-      const newIdeaItem = await addFoodIdea(cycleId, selectedFortnight, meal, text);
-      setIdeas((prev) => ({
-        ...prev,
-        [meal]: [...prev[meal], newIdeaItem],
-      }));
-      setNewIdea((prev) => ({ ...prev, [meal]: "" }));
+      try {
+        const newIdeaItem = await addFoodIdea(cycleId, selectedFortnight, meal, text);
+        console.log('addFoodIdea result:', newIdeaItem);
+        if (!newIdeaItem || !newIdeaItem.id || !newIdeaItem.text) {
+          setAddIdeaError((prev: Record<(typeof meals)[number], string | null>) => ({ ...prev, [meal]: 'Failed to add idea: invalid response from server.' }));
+        } else {
+          setIdeas((prev) => ({
+            ...prev,
+            [meal]: [...prev[meal], newIdeaItem],
+          }));
+          setNewIdea((prev) => ({ ...prev, [meal]: "" }));
+        }
+      } catch (error: unknown) {
+        let message = 'Failed to add idea.';
+        if (error instanceof Error) {
+          message = error.message;
+        } else if (typeof error === 'string') {
+          message = error;
+        }
+        setAddIdeaError((prev: Record<(typeof meals)[number], string | null>) => ({ ...prev, [meal]: message }));
+        console.error('Error adding idea:', error);
+      }
     }
+    setAddIdeaLoading((prev: Record<(typeof meals)[number], boolean>) => ({ ...prev, [meal]: false }));
   };
 
   const handleDeleteIdea = async (
@@ -543,6 +575,12 @@ export function MacrosClient({
                     placeholder="e.g., 2 bananas"
                     value={newIdea[meal]}
                     onChange={(e) => handleNewIdeaChange(meal, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !addIdeaLoading[meal]) {
+                        e.preventDefault();
+                        handleAddIdea(meal);
+                      }
+                    }}
                     className="bg-transparent border-muted"
                   />
                   <Button onClick={() => handleAddIdea(meal)}>Add Idea</Button>

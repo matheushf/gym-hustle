@@ -35,9 +35,12 @@ export async function addFoodIdea(
   text: string
 ) {
   const supabase = createClient(cookies());
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  const user_id = session.user.id;
   const { data, error } = await supabase
     .from('food_ideas')
-    .insert([{ cycle_id: cycleId, week, meal, text }])
+    .insert([{ cycle_id: cycleId, week, meal, text, user_id }])
     .select()
     .single();
   if (error) throw error;
