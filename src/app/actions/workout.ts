@@ -807,3 +807,28 @@ export async function getLastWorkoutTimer(workoutId: string, dayName: string, da
   if (!data || data.length === 0) return null;
   return data[0] as WorkoutTime;
 }
+
+/**
+ * Update a workout timer's duration_seconds and ended_at. Only for the current user's timer.
+ */
+export async function updateWorkoutTimerDuration(timerId: string, newDurationSeconds: number, newEndedAt?: string): Promise<WorkoutTime> {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+  const userId = session.user.id;
+
+  // Update the timer (only if it belongs to the user)
+  const { data, error } = await supabase
+    .from("workout_times")
+    .update({
+      duration_seconds: newDurationSeconds,
+      ...(newEndedAt ? { ended_at: newEndedAt } : {}),
+    })
+    .eq("id", timerId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as WorkoutTime;
+}
