@@ -152,47 +152,49 @@ export function DaySection({
                                 onChange={(e) => onEditingExerciseSetChange(idx, 'weight', e.target.value)}
                                 className="flex-1 bg-transparent border-muted"
                               />
+                              {idx === editingExercise.sets.length - 1 && (
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => onAddEditingExerciseSet()}
+                                  type="button"
+                                  aria-label="Add set"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 onClick={() => onRemoveEditingExerciseSet(idx)}
                                 disabled={editingExercise.sets.length === 1}
+                                type="button"
+                                aria-label="Remove set"
                               >
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
                           ))}
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-1 items-end justify-end gap-2">
                             <Button
                               variant="outline"
-                              onClick={onAddEditingExerciseSet}
-                              className="flex-initial"
+                              onClick={onUpdateExercise}
+                              disabled={loadingStates.editingId === exercise.id}
                             >
-                              Add Set
+                              {loadingStates.editingId === exercise.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckIcon className="h-4 w-4 text-green-600 mr-2" /> Save
+                                </>
+                              )}
                             </Button>
-                            <div className="flex gap-1 ml-auto">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={onUpdateExercise}
-                                disabled={loadingStates.editingId === exercise.id}
-                              >
-                                {loadingStates.editingId === exercise.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <CheckIcon className="h-4 w-4 text-green-600 mr-2" /> Save
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={onCancelEdit}
-                                disabled={loadingStates.editingId === exercise.id}
-                              >
-                                <X className="h-4 w-4 text-red-600" />
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={onCancelEdit}
+                              disabled={loadingStates.editingId === exercise.id}
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
                           </div>
                         </div>
                       </li>
@@ -247,10 +249,22 @@ export function DaySection({
                     onChange={e => onNewExerciseSetChange(idx, 'weight', e.target.value)}
                     className="flex-1 bg-transparent border-muted"
                   />
+                  {idx === newExercise.sets.length - 1 && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => onAddNewExerciseSet()}
+                      type="button"
+                      aria-label="Add set"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     onClick={() => onRemoveNewExerciseSet(idx)}
                     disabled={newExercise.sets.length === 1}
+                    type="button"
+                    aria-label="Remove set"
                   >
                     <X className="h-4 w-4" />
                   </Button>
