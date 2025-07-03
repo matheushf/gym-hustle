@@ -169,44 +169,6 @@ export function DaySection({
     }
   }, [timer]);
 
-  // Format seconds as HH:MM:SS
-  function formatDuration(sec: number) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return [h, m, s]
-      .map(v => v.toString().padStart(2, '0'))
-      .join(':');
-  }
-
-  // Start timer handler
-  async function handleStart() {
-    setLoadingTimer(true);
-    try {
-      const started = await startWorkoutTimer(workoutId, dayName);
-      setTimer(started);
-      setIsRunning(true);
-      setElapsed(0);
-    } finally {
-      setLoadingTimer(false);
-    }
-  }
-
-  // Stop timer handler
-  async function handleStop() {
-    setLoadingTimer(true);
-    try {
-      const stopped = await stopWorkoutTimer(workoutId, dayName);
-      setTimer(stopped);
-      setIsRunning(false);
-      if (stopped && stopped.duration_seconds != null) {
-        setElapsed(stopped.duration_seconds);
-      }
-    } finally {
-      setLoadingTimer(false);
-    }
-  }
-
   // Save edited duration
   async function handleSaveDuration() {
     setLoadingTimer(true);

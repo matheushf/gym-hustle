@@ -108,7 +108,7 @@ export function MacrosClient({
       Object.fromEntries(
         meals.map((meal) => [
           meal,
-          macros[meal]
+          initialMacros.find((m) => m.meal === meal) ?? { carbos: null, fat: null, protein: null }
         ])
       )
     );
@@ -585,6 +585,9 @@ export function MacrosClient({
                   />
                   <Button onClick={() => handleAddIdea(meal)}>Add Idea</Button>
                 </div>
+                {addIdeaError[meal] && (
+                  <p className="text-destructive text-xs text-center mt-1">Error: {addIdeaError[meal]}</p>
+                )}
               </div>
             </div>
           );
