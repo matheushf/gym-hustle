@@ -66,6 +66,8 @@ export async function logout() {
     throw error;
   }
 
+  console.log("oi-- Logged out");
+
   revalidatePath("/");
   redirect("/auth/login");
 }

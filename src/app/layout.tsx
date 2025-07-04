@@ -7,6 +7,7 @@ import type { Viewport } from "next";
 import { getCurrentUser } from "@/app/actions/auth";
 import { Header } from "@/components/Header";
 import { AuthProvider } from "@/context/AuthProvider";
+import { createClient } from "@/utils/supabase/client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,6 +50,13 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+
+  console.log("oi-- User:", user);
+
+    const supabase = createClient();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("oi-- layout Auth state changed:", _event, session);
+    });
 
   return (
     <html

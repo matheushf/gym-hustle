@@ -2,6 +2,11 @@
 CREATE TABLE user_profile (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   selected_workout_id UUID REFERENCES workouts(id),
+  name TEXT,
+  email TEXT,
+  avatar TEXT,
+  age INTEGER,
+  gender TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );

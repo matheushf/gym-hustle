@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { signup } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
 import { toast } from "react-hot-toast";
+import Link from "next/link";
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -58,9 +59,9 @@ export default function SignupPage() {
           <div className="text-center mt-4">
             <p className="text-sm text-gray-400">
               Already have an account?{" "}
-              <a href="/auth/login" className="text-primary hover:underline">
+              <Link href="/auth/login" className="text-primary hover:underline">
                 Login
-              </a>
+              </Link>
             </p>
           </div>
         </form>
