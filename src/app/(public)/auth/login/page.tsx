@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { login } from "@/app/actions/auth";
 import { redirect, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
+import Link from "next/link";
+import { loginWithGoogle } from "@/app/actions/auth.client";
+import { GoogleLoginButton } from "@/components/ui/GoogleLoginButton";
 
 function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +39,16 @@ function LoginForm() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch {
+      toast.error("Failed to login with Google.");
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full py-8 text-center">
       <h1 className="text-2xl font-bold text-primary mb-4">Gym Hustle</h1>
@@ -62,12 +75,17 @@ function LoginForm() {
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Logging in..." : "Login"}
         </Button>
+        <GoogleLoginButton
+          isSignIn={true}
+          isLoading={isLoading}
+          onClick={handleGoogleLogin}
+        />
         <div className="text-center mt-4">
           <p className="text-sm text-gray-400">
             {"Don't have an account? "}
-            <a href="/auth/signup" className="text-primary hover:underline">
+            <Link href="/auth/signup" className="text-primary hover:underline">
               Sign up
-            </a>
+            </Link>
           </p>
         </div>
       </form>
