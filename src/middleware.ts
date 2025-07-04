@@ -14,7 +14,8 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      * - auth routes
+     * - privacy-policy (public legal page)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|manifest.*|apple-icon.*|icon.*).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|manifest.*|apple-icon.*|icon.*|privacy-policy).*)',
   ],
 } 

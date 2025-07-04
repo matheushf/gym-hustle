@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const LOGIN_PATH = "/auth";
-
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -37,15 +35,15 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Redirect unauthenticated users to login, except for auth routes
-  if (!user && !path.startsWith(LOGIN_PATH) && !path.startsWith("/auth")) {
+  if (!user && !path.startsWith("/auth")) {
     const url = request.nextUrl.clone();
-    url.pathname = LOGIN_PATH;
+    url.pathname = '/auth/login';
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 
   // Prevent authenticated users from accessing the login page
-  if (user && path.startsWith(LOGIN_PATH)) {
+  if (user && path.startsWith('/auth')) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

@@ -95,7 +95,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="container max-w-md mx-auto min-h-screen p-4 sm:p-0 flex items-center justify-center">
+    <div className="container max-w-md mx-auto min-h-screen p-4 sm:p-0 flex items-center justify-center flex-col">
       <Suspense fallback={
         <div className="w-full py-8 text-center">
           <h1 className="text-2xl font-bold text-primary mb-4">Loading...</h1>
@@ -103,6 +103,9 @@ export default function LoginPage() {
       }>
         <LoginForm />
       </Suspense>
+      <footer className="w-full text-center mt-8 text-sm text-muted-foreground">
+        <Link href="/privacy-policy" className="underline hover:text-primary transition-colors">Privacy Policy</Link>
+      </footer>
     </div>
   );
 } 
