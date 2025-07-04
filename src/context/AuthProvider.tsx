@@ -1,7 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { createClient } from "@/utils/supabase/client";
+import React, { createContext, useContext, ReactNode } from "react";
 import { User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -15,28 +14,10 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-      setUser(session?.user ?? null);
-    });
-    // Listen for auth state changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("oi-- Auth state changed:", _event, session);
-      setIsAuthenticated(!!session);
-    });
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
-  }, []);
+export function AuthProvider({ children, user }: { children: ReactNode, user: User | null }) {
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

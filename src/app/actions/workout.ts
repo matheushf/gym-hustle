@@ -533,8 +533,6 @@ export async function createWorkout(name: string) {
     .select()
     .single();
   if (error) throw error;
-  revalidatePath("/workout");
-  revalidateTag(`workout-${userId}`);
   return data;
 }
 

@@ -42,7 +42,7 @@ function LoginForm() {
     setIsLoading(true);
     try {
       await loginWithGoogle();
-      redirect("/workout");
+      // redirect("/workout");
       // Supabase will redirect, so no further action needed
     } catch {
       toast.error("Failed to login with Google.");

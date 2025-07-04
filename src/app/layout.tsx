@@ -7,7 +7,6 @@ import type { Viewport } from "next";
 import { getCurrentUser } from "@/app/actions/auth";
 import { Header } from "@/components/Header";
 import { AuthProvider } from "@/context/AuthProvider";
-import { createClient } from "@/utils/supabase/client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,13 +50,6 @@ export default async function RootLayout({
 }) {
   const user = await getCurrentUser();
 
-  console.log("oi-- User:", user);
-
-    const supabase = createClient();
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("oi-- layout Auth state changed:", _event, session);
-    });
-
   return (
     <html
       suppressHydrationWarning
@@ -83,7 +75,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <div className={user ? "md:ml-64 pt-[60px]" : ""}>
-          <AuthProvider>
+          <AuthProvider user={user}>
             <ThemeProvider
               attribute="class"
               defaultTheme="system"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/app/actions/auth";
+import { Loader2 } from "lucide-react";
 
 export function MobileMenu({ userName }: { userName: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -178,16 +179,7 @@ export function MobileMenu({ userName }: { userName: string }) {
           className="mt-8"
         >
           {isSigningOut ? (
-            <svg className="h-4 w-4 animate-spin mr-2" viewBox="0 0 24 24">
-              <circle
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-              />
-            </svg>
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : null}
           Sign out
         </Button>
