@@ -7,6 +7,8 @@ import { signup } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
+import { loginWithGoogle } from "@/app/actions/auth.client";
+import { GoogleLoginButton } from "@/components/ui/GoogleLoginButton";
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +27,16 @@ export default function SignupPage() {
       setIsLoading(false);
       const email = formData.get("email") as string;
       redirect(`/auth/confirm-email?email=${encodeURIComponent(email)}`);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch {
+      toast.error("Failed to sign up with Google.");
+      setIsLoading(false);
     }
   };
 
@@ -56,6 +68,11 @@ export default function SignupPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Creating account..." : "Sign up"}
           </Button>
+          <GoogleLoginButton
+            isLoading={isLoading}
+            isSignIn={false}
+            onClick={handleGoogleLogin}
+          />
           <div className="text-center mt-4">
             <p className="text-sm text-gray-400">
               Already have an account?{" "}
