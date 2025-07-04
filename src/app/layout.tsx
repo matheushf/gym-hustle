@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import type { Viewport } from "next";
 import { getCurrentUser } from "@/app/actions/auth";
 import { Header } from "@/components/Header";
+import { AuthProvider } from "@/context/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -74,16 +75,18 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <div className={user ? "md:ml-64 pt-[60px]" : ""}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Header userEmail={user?.email ?? ""} />
-            <main>{children}</main>
-            <Toaster />
-          </ThemeProvider>
+          <AuthProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <Header />
+              <main>{children}</main>
+              <Toaster />
+            </ThemeProvider>
+          </AuthProvider>
         </div>
       </body>
     </html>
